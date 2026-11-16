@@ -1,5 +1,6 @@
 import { coachTips, nextFocus, sessionFeedback, type CoachTip } from '../coach/rules';
 import { pct, sessionFrameStats, worstLeaves, type FrameStats } from '../domain/scoring';
+import { coldStart } from '../domain/coldstart';
 import { dashboard, goalProgress, type GroupAvg } from '../domain/stats';
 import { typeLabel, type CoachReport, type SessionType } from '../domain/types';
 import { getData, updateSettings } from '../state';
@@ -8,6 +9,7 @@ import { exportJson } from '../storage/io';
 import { esc, fmtAvg, fmtInt, fmtSigned, todayIso } from '../util/format';
 import { mountScoreChart } from './chart';
 import { saveFile } from './files';
+import { coldRow, coldTable } from './prepPage';
 import { takeJustSaved, toast } from './shell';
 
 const tile = (label: string, value: string, extra = '') =>
@@ -89,6 +91,18 @@ function frameCard(fs: FrameStats, corner: number): string {
   </section>`;
 }
 
+function coldCard(): string {
+  const { sessions } = getData();
+  const comp = coldStart(sessions, 'verseny');
+  const train = coldStart(sessions, 'edzes');
+  if (comp.n + train.n === 0) return '';
+  return `<section class="card">
+    <h2>Hidegindítás <span class="hint">1. vs 2. játék</span></h2>
+    ${coldTable(coldRow('Verseny', comp) + coldRow('Edzés', train))}
+    <a class="claude-link" href="#/verseny-elott"><span><b>Verseny előtt</b><span class="muted"> · bemelegítés, ami bevált</span></span><span aria-hidden="true">›</span></a>
+  </section>`;
+}
+
 function backupBanner(): string {
   const r = backupReminder(getData());
   if (!r) return '';
@@ -155,6 +169,8 @@ export function renderHome(root: HTMLElement): void {
           </section>`
         : ''
     }
+
+    ${coldCard()}
 
     <section class="card" id="chartCard"></section>
 

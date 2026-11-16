@@ -1,5 +1,6 @@
 import { emptyData, setSessionTypes, type AppData, type CoachReport, type Session, type Settings } from './domain/types';
 import { load, save } from './storage/db';
+import { applySeeds, latestEntered } from './storage/seeds';
 
 let data: AppData = emptyData();
 
@@ -7,7 +8,11 @@ export const getData = () => data;
 
 export async function init(): Promise<void> {
   data = await load();
+  // Kezdő adatok (egyszer, duplikáció nélkül).
+  const seeded = applySeeds(data);
+  data = seeded.data;
   setSessionTypes(data.settings.sessionTypes);
+  if (seeded.changed) await save(data);
 }
 
 async function commit(): Promise<void> {
@@ -50,5 +55,5 @@ export async function replaceAll(next: AppData): Promise<void> {
 
 /** A legutóbb rögzített alkalom (a gyors bevitel alapértékeihez). */
 export function lastSession(): Session | undefined {
-  return [...data.sessions].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  return latestEntered(data.sessions);
 }

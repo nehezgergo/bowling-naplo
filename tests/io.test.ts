@@ -26,12 +26,12 @@ const tenFrames: Frame[] = [
 ];
 
 const sample = (): AppData => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   coachReports: [sampleReport],
   settings: { ...defaultSettings(), goalAverage: 160, profile: { hand: 'jobb', yearsPlaying: 3 } },
   sessions: [
     {
-      id: 'a1', date: '2026-10-01', type: 'edzes', ball: '12 lb', venue: 'Gutenberg', note: 'jó; "nagyon" jó\nmásodik sor',
+      id: 'a1', date: '2026-10-01', type: 'edzes', ball: '12 lb', venue: 'Gutenberg', warmup: { shots: 8, minutes: 10, routine: 'nyújtás; 2 spare' }, note: 'jó; "nagyon" jó\nmásodik sor',
       coach: { fatigue: 2, concentration: 4, selfRating: 3, oil: 'kozepes', laneCondition: 'normal', lanes: '5–6', target: '2. nyíl', focusGoal: 'spare-ek', focusResult: 'reszben', wentWell: 'tempó', wentBad: '10-es' },
       games: [{ index: 1, score: 203, frames: tenFrames }, { index: 2, score: 151, ball: 'Spare golyó' }],
       createdAt: '2026-10-01T18:00:00.000Z', updatedAt: '2026-10-01T19:00:00.000Z',

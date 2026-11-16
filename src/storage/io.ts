@@ -27,7 +27,7 @@ const APP_ID = 'bowling-naplo';
 
 export function exportJson(data: AppData, now = new Date()): string {
   return JSON.stringify(
-    { app: APP_ID, schemaVersion: data.schemaVersion, exportedAt: now.toISOString(), sessions: data.sessions, settings: data.settings, coachReports: data.coachReports },
+    { app: APP_ID, schemaVersion: data.schemaVersion, exportedAt: now.toISOString(), sessions: data.sessions, settings: data.settings, coachReports: data.coachReports, appliedSeeds: data.appliedSeeds ?? [] },
     null,
     2,
   );
@@ -187,6 +187,9 @@ const COLS = {
   focusResult: ['Fókusz sikerült', 'fokusz sikerult'],
   wentWell: ['Mi ment jól', 'mi ment jol'],
   wentBad: ['Mi nem ment', 'mi nem ment'],
+  warmupShots: ['Bemelegítő dobások', 'bemelegito dobasok', 'bemelegites dobas'],
+  warmupMinutes: ['Bemelegítés (perc)', 'bemelegites perc', 'bemelegites ideje'],
+  warmupRoutine: ['Bemelegítő rutin', 'bemelegito rutin', 'bemelegites'],
   id: ['Alkalom azonosító', 'alkalom azonosito', 'alkalom id', 'id'],
 } as const;
 type ColKey = keyof typeof COLS;
@@ -212,7 +215,8 @@ export function exportCsv(sessions: Session[]): string {
         fatigue: c.fatigue, concentration: c.concentration, selfRating: c.selfRating,
         oil: c.oil && OIL_LABEL[c.oil], laneCondition: c.laneCondition && LANE_LABEL[c.laneCondition],
         lanes: c.lanes, target: c.target, focusGoal: c.focusGoal, focusResult: c.focusResult && FOCUS_LABEL[c.focusResult],
-        wentWell: c.wentWell, wentBad: c.wentBad, id: s.id,
+        wentWell: c.wentWell, wentBad: c.wentBad,
+        warmupShots: s.warmup?.shots, warmupMinutes: s.warmup?.minutes, warmupRoutine: s.warmup?.routine, id: s.id,
       };
       lines.push(keys.map((k) => csvCell(row[k])).join(';'));
     }
@@ -409,6 +413,8 @@ export function parseCsvImport(text: string, uid: () => string): ImportResult {
       if (c) s.coach = c;
       const cp = compact(comp);
       if (cp) s.competition = cp;
+      const wu = compact({ shots: num(r, 'warmupShots'), minutes: num(r, 'warmupMinutes'), routine: opt(get(r, 'warmupRoutine')) });
+      if (wu) s.warmup = wu;
       groups.set(key, s);
       order.push(key);
     }

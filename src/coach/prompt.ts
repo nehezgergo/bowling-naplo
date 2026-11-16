@@ -5,7 +5,13 @@
 import { pct, sessionFrameStats, worstLeaves } from '../domain/scoring';
 import { average, dashboard, sessionAverage } from '../domain/stats';
 import { typeLabel, type AppData, type CoachAdvice, type CoachReport, type Session } from '../domain/types';
+import { coldStart, type ColdStart } from '../domain/coldstart';
 import { coachTips, stdDev } from './rules';
+
+const coldLine = (label: string, c: ColdStart) =>
+  c.n === 0
+    ? `${label}: nincs kétjátékos alkalom.`
+    : `${label} az 1. játék átlaga ${c.firstAvg!.toFixed(1)}, a 2. játéké ${c.secondAvg!.toFixed(1)}; ${c.n} alkalomból ${c.secondBetter}-szor volt jobb a 2.${c.enough ? '' : ' (kevés adat)'}`;
 
 export const COACH_MODEL = 'claude-opus-5-5';
 /** Claude Opus 5.5 ára (USD / millió token): bemenet, kimenet. */
@@ -133,6 +139,9 @@ function sessionLine(s: Session): string {
   }
   if (s.competition?.ownRank) parts.push(`helyezés: ${s.competition.ownRank}${s.competition.entrants ? `/${s.competition.entrants}` : ''}`);
   if (s.note) parts.push(`megjegyzés: „${s.note}”`);
+  const w = s.warmup;
+  if (w && (w.shots !== undefined || w.minutes !== undefined || w.routine))
+    parts.push(`bemelegítés: ${[w.shots !== undefined ? `${w.shots} dobás` : '', w.minutes !== undefined ? `${w.minutes} perc` : '', w.routine ? `„${w.routine}”` : ''].filter(Boolean).join(', ')}`);
   const fs = sessionFrameStats([s]);
   if (fs.games) parts.push(`frame-adat (${fs.games} játék): strike ${fs.strikes}/${fs.strikeChances}, spare ${fs.spares}/${fs.spareChances}, nyitott ${fs.opens}`);
   return `- ${parts.join(' | ')}`;
@@ -191,6 +200,8 @@ export function buildCoachMessage(data: AppData, today: string, question?: strin
     `${d.all.count} játék, ${sessions.length} alkalom. Összátlag ${f1(d.all.average)}; utolsó 20 játék átlaga ${f1(d.last20Avg)}${d.last20Change !== null ? ` (az előző 20-hoz képest ${d.last20Change >= 0 ? '+' : ''}${d.last20Change.toFixed(1)})` : ''}.`,
     `Edzésátlag ${f1(d.trainingAvg)}, versenyátlag ${f1(d.competitionAvg)}. Legjobb ${d.all.best ?? '–'}, legrosszabb ${d.all.worst ?? '–'}; 200+: ${d.all.over200}, 150+: ${d.all.over150}, 100 alatt: ${d.all.under100}.`,
     `Szórás az utolsó 20 játékban: ${f1(stdDev(scores.slice(-20)))} pont.`,
+    coldLine('Versenyen', coldStart(sessions, 'verseny')),
+    coldLine('Edzésen', coldStart(sessions, 'edzes')),
     `Golyónként: ${d.byBall.map((b) => `${b.key} ${f1(b.average)} (${b.count})`).join('; ') || '–'}`,
     `Típusonként: ${d.byType.map((b) => `${typeLabel(b.key as Session['type'])} ${f1(b.average)} (${b.count})`).join('; ') || '–'}`,
     `Havi átlagok: ${monthlyAverages(sessions).join('; ') || '–'}`,

@@ -4,6 +4,7 @@ import { getData, init } from './state';
 import { requestPersistence } from './storage/db';
 import { renderCoachPage } from './ui/coachPage';
 import { renderHome } from './ui/home';
+import { renderPrepPage } from './ui/prepPage';
 import { renderLog } from './ui/log';
 import { renderNewSession } from './ui/newSession';
 import { renderSettings } from './ui/settings';
@@ -15,6 +16,7 @@ const routes: Record<string, (root: HTMLElement, params: URLSearchParams) => voi
   naplo: renderLog,
   beallitasok: renderSettings,
   edzo: renderCoachPage,
+  'verseny-elott': renderPrepPage,
 };
 
 function route() {

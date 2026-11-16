@@ -1,5 +1,5 @@
 import { cleanKey, getApiKey, maskKey, setApiKey, verifyApiKey } from '../coach/claude';
-import { KIND_LABEL, type Profile, type SessionTypeDef, type Settings, type TypeKind } from '../domain/types';
+import { CURRENT_SCHEMA, KIND_LABEL, type Profile, type SessionTypeDef, type Settings, type TypeKind } from '../domain/types';
 import { getData, replaceAll, updateSettings } from '../state';
 import {
   csvTemplate,
@@ -361,7 +361,7 @@ function showPreview(root: HTMLElement, fileName: string, res: ImportResult) {
 
   box.querySelector('#impCancel')!.addEventListener('click', () => (box.innerHTML = ''));
   box.querySelector('#impMerge')!.addEventListener('click', async () => {
-    await replaceAll({ schemaVersion: 1, sessions: merge.sessions, settings: settingsFor(), coachReports: mergeReports(data.coachReports, res.coachReports) });
+    await replaceAll({ ...data, schemaVersion: CURRENT_SCHEMA, sessions: merge.sessions, settings: settingsFor(), coachReports: mergeReports(data.coachReports, res.coachReports) });
     toast(`Import kész: ${merge.added} új, ${merge.updated} frissítve`);
     applyTheme(getData().settings.theme);
     renderSettings(root);
@@ -369,7 +369,7 @@ function showPreview(root: HTMLElement, fileName: string, res: ImportResult) {
   box.querySelector('#impReplace')!.addEventListener('click', async () => {
     const n = data.sessions.length;
     if (n > 0 && !confirm(`A jelenlegi ${n} alkalom törlődik, és a fájl tartalma kerül a helyére. Ez nem vonható vissza. Biztos vagy benne? (Előtte érdemes menteni.)`)) return;
-    await replaceAll({ schemaVersion: 1, sessions: res.sessions, settings: settingsFor(), coachReports: res.coachReports });
+    await replaceAll({ ...data, schemaVersion: CURRENT_SCHEMA, sessions: res.sessions, settings: settingsFor(), coachReports: res.coachReports });
     toast(`Adatok lecserélve: ${res.sessions.length} alkalom`);
     applyTheme(getData().settings.theme);
     renderSettings(root);

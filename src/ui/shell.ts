@@ -53,7 +53,8 @@ export function showSaved(title: string, lines: string[], ms = 3200): void {
   el.addEventListener('click', close);
   document.body.appendChild(el);
   try {
-    navigator.vibrate?.(40);
+    // Csak valódi érintés után rezeghet (különben a böngésző tiltja és hibát naplóz).
+    if ((navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive) navigator.vibrate?.(40);
   } catch {
     /* nem támogatott */
   }

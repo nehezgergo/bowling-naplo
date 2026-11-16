@@ -46,6 +46,8 @@ export interface Frame {
   /** A spare-kísérlet után is álló bábuk. */
   pinsAfter?: number[];
   split?: boolean;
+  /** Az első dobás iránya (opcionális): zseb, balra vagy jobbra ment. */
+  firstBall?: 'zseb' | 'bal' | 'jobb';
 }
 
 export interface Game {
@@ -84,6 +86,16 @@ export interface Competition {
   teamsCount?: number;
 }
 
+/** Bemelegítés az alkalom előtt (minden mező opcionális). */
+export interface Warmup {
+  /** Bemelegítő dobások száma. */
+  shots?: number;
+  /** Időtartam percben. */
+  minutes?: number;
+  /** Szabad szöveges rutin. */
+  routine?: string;
+}
+
 export interface Session {
   id: string;
   date: string; // YYYY-MM-DD
@@ -94,6 +106,7 @@ export interface Session {
   note?: string;
   coach?: SessionCoach;
   competition?: Competition;
+  warmup?: Warmup;
   games: Game[];
   createdAt: string;
   updatedAt: string;
@@ -143,11 +156,16 @@ export interface CoachReport {
   usage?: { inputTokens: number; outputTokens: number; costUsd: number };
 }
 
+/** Az adatmodell aktuális verziója (a migráció ehhez igazít). */
+export const CURRENT_SCHEMA = 2 as const;
+
 export interface AppData {
-  schemaVersion: 1;
+  schemaVersion: typeof CURRENT_SCHEMA;
   sessions: Session[];
   settings: Settings;
   coachReports: CoachReport[];
+  /** Már betöltött kezdő adatcsomagok azonosítói (így egy csomag csak egyszer kerül be). */
+  appliedSeeds?: string[];
 }
 
 export const defaultSettings = (): Settings => ({
@@ -159,7 +177,7 @@ export const defaultSettings = (): Settings => ({
 });
 
 export const emptyData = (): AppData => ({
-  schemaVersion: 1,
+  schemaVersion: CURRENT_SCHEMA,
   sessions: [],
   settings: defaultSettings(),
   coachReports: [],

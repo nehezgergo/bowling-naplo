@@ -1,4 +1,4 @@
-import { emptyData, defaultSettings, type AppData, type SessionTypeDef } from '../domain/types';
+import { CURRENT_SCHEMA, emptyData, defaultSettings, type AppData, type SessionTypeDef } from '../domain/types';
 
 const DB_NAME = 'bowling-naplo';
 const STORE = 'kv';
@@ -47,13 +47,29 @@ export function validTypes(raw: unknown): SessionTypeDef[] | null {
   return out.length ? out : null;
 }
 
-/** Hiányzó mezők pótlása régebbi/hiányos adatnál. */
+/**
+ * Migráció a régebbi verziókról. Csak hozzáad, soha nem töröl adatot:
+ * - v1 → v2: új, opcionális mezők (bemelegítés, első dobás iránya, kezdő adatok jelölése);
+ *   a meglévő alkalmak, beállítások és az edzőnapló változatlanok.
+ */
+export function migrate(raw: Record<string, unknown>): Record<string, unknown> {
+  let v = typeof raw.schemaVersion === 'number' ? raw.schemaVersion : 1;
+  let out = { ...raw };
+  if (v < 2) {
+    out = { ...out, appliedSeeds: Array.isArray(out.appliedSeeds) ? out.appliedSeeds : [] };
+    v = 2;
+  }
+  return { ...out, schemaVersion: v };
+}
+
+/** Hiányzó mezők pótlása régebbi/hiányos adatnál (a migráció után). */
 export function normalize(raw: unknown): AppData {
   const base = emptyData();
   if (!raw || typeof raw !== 'object') return base;
-  const r = raw as Partial<AppData>;
+  const r = migrate(raw as Record<string, unknown>) as Partial<AppData>;
   return {
-    schemaVersion: 1,
+    schemaVersion: CURRENT_SCHEMA,
+    appliedSeeds: Array.isArray(r.appliedSeeds) ? r.appliedSeeds.filter((x): x is string => typeof x === 'string') : [],
     sessions: Array.isArray(r.sessions) ? r.sessions : [],
     settings: {
       ...defaultSettings(),

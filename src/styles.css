@@ -459,3 +459,11 @@ code { font-size: 0.85em; background: var(--surface-2); padding: 2px 6px; border
 .backup-banner { border: 2px solid var(--gold); display: grid; gap: 10px; }
 .backup-actions { display: flex; gap: 8px; }
 .backup-actions .btn-primary { flex: 1; }
+
+/* Hidegindítás, verseny előtt */
+.cold-tbl th { font-size: 0.72rem; }
+.cold-tbl td { padding: 8px 3px; }
+.few { display: inline-block; font-size: 0.7rem; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 0.03em; }
+.down-txt { color: var(--bad); }
+.prep-routine { margin-top: 10px; padding: 10px; border-radius: 10px; background: var(--surface); font-style: italic; }
+.prep-routine .muted { font-style: normal; margin-top: 4px; }

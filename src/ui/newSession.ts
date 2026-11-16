@@ -8,6 +8,7 @@ import {
   type Game,
   type Session,
   type SessionCoach,
+  type Warmup,
   type SessionType,
 } from '../domain/types';
 import { deleteSession, getData, lastSession, upsertSession } from '../state';
@@ -32,12 +33,14 @@ interface Draft {
   gameBalls: string[];
   coach: SessionCoach;
   competition: Competition;
+  warmup: Warmup;
 }
 
 /** Régebbi vagy hiányos piszkozatnál a párhuzamos tömbök hosszának igazítása. */
 function normalizeDraft(d: Draft): Draft {
   const n = d.scores.length;
   d.frames = Array.from({ length: n }, (_, i) => d.frames?.[i] ?? undefined);
+  d.warmup = d.warmup ?? {};
   d.gameBalls = Array.from({ length: n }, (_, i) => d.gameBalls?.[i] ?? '');
   return d;
 }
@@ -82,6 +85,7 @@ function newDraft(): Draft {
     gameBalls: [''],
     coach: {},
     competition: {},
+    warmup: {},
   };
 }
 
@@ -101,6 +105,7 @@ function draftFromSession(s: Session): Draft {
     gameBalls: games.map((g) => g.ball ?? ''),
     coach: { ...(s.coach ?? {}) },
     competition: { ...(s.competition ?? {}) },
+    warmup: { ...(s.warmup ?? {}) },
   };
 }
 
@@ -183,6 +188,18 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
         <div class="games-summary" id="gamesSummary">${summaryText()}</div>
       </div>
 
+      <details class="more"${draft.warmup.shots !== undefined || draft.warmup.minutes !== undefined || draft.warmup.routine ? ' open' : ''}>
+        <summary>Bemelegítés <span class="hint">dobások, idő, rutin</span></summary>
+        <div class="row2">
+          <div class="field"><label class="field-label" for="wuShots">Bemelegítő dobás</label>
+            <input id="wuShots" inputmode="numeric" maxlength="3" placeholder="pl. 8" value="${esc(draft.warmup.shots)}"></div>
+          <div class="field"><label class="field-label" for="wuMinutes">Időtartam (perc)</label>
+            <input id="wuMinutes" inputmode="numeric" maxlength="3" placeholder="pl. 10" value="${esc(draft.warmup.minutes)}"></div>
+        </div>
+        <div class="field"><label class="field-label" for="wuRoutine">Rutin</label>
+          <textarea id="wuRoutine" rows="2" placeholder="pl. nyújtás, 4 üres lendítés, 2 spare-dobás a 10-esre">${esc(draft.warmup.routine)}</textarea></div>
+      </details>
+
       <details class="more">
         <summary>Részletek <span class="hint">helyszín, verseny neve, megjegyzés</span></summary>
         <div class="field"><label class="field-label" for="venue">Pálya, helyszín</label><input id="venue" value="${esc(draft.venue)}"></div>
@@ -258,6 +275,11 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
       wentWell: val('wentWell') || undefined,
       wentBad: val('wentBad') || undefined,
     });
+    const intIn = (id: string, max: number) => {
+      const n = num(id);
+      return n !== undefined && Number.isInteger(n) && n >= 0 && n <= max ? n : undefined;
+    };
+    draft.warmup = { shots: intIn('wuShots', 300), minutes: intIn('wuMinutes', 300), routine: val('wuRoutine') || undefined };
     draft.competition = {
       ownRank: num('ownRank'),
       entrants: num('entrants'),
@@ -407,6 +429,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
       note: draft.note || undefined,
       coach: clean(draft.coach),
       competition: clean(draft.competition),
+      warmup: clean(draft.warmup),
       games: keep.map((di, k) => {
         const g: Game = { index: k + 1, score: parsed[k] as number };
         if (draft.gameBalls[di]) g.ball = draft.gameBalls[di];
