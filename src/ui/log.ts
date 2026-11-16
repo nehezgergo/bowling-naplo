@@ -1,3 +1,4 @@
+import { sessionFrameStats } from '../domain/scoring';
 import { average, NO_BALL, sessionAverage } from '../domain/stats';
 import { getSessionTypes, typeKind, typeLabel, type Session } from '../domain/types';
 import { getData } from '../state';
@@ -64,6 +65,13 @@ export function typeOptions(sessions: Session[]): { id: string; label: string }[
   return list;
 }
 
+/** Az alkalom első dobásainak iránya, ha jelölted. */
+function dirLine(s: Session): string {
+  const d = sessionFrameStats([s]).dir;
+  if (d.zseb + d.bal + d.jobb === 0) return '';
+  return `<div class="log-dir">Első dobás: zseb ${d.zseb + d.strike} · balra ${d.bal} · jobbra ${d.jobb}</div>`;
+}
+
 const opt = (value: string, label: string, cur: string) =>
   `<option value="${esc(value)}"${value === cur ? ' selected' : ''}>${esc(label)}</option>`;
 
@@ -95,6 +103,7 @@ export function renderLog(root: HTMLElement): void {
                 ${s.ball ? `<span class="badge">${esc(s.ball)}</span>` : ''}
                 ${s.eventName ? `<span class="muted">${esc(s.eventName)}</span>` : ''}
               </div>
+              ${dirLine(s)}
               <div class="log-scores">${scores
                 .map((n) => `<span class="score${n === best && scores.length > 1 ? ' best' : ''}${n >= 200 ? ' s200' : ''}">${n}</span>`)
                 .join('')}</div>

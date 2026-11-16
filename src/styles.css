@@ -467,3 +467,21 @@ code { font-size: 0.85em; background: var(--surface-2); padding: 2px 6px; border
 .down-txt { color: var(--bad); }
 .prep-routine { margin-top: 10px; padding: 10px; border-radius: 10px; background: var(--surface); font-style: italic; }
 .prep-routine .muted { font-style: normal; margin-top: 4px; }
+
+/* Frame-szerkesztő: irány-gombok */
+.fe-dirs { grid-template-columns: repeat(4, 1fr); }
+.fe-dirs .fe-big { font-size: 1.4rem; }
+.fe-ok { border-color: var(--good); }
+.fe-dir { font-style: normal; font-weight: 800; color: var(--accent); }
+
+/* Spare-állások, első dobás */
+.leave-tbl tr.worst td { background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.tag { font-size: 0.68rem; font-weight: 800; padding: 1px 6px; border-radius: 99px; background: var(--surface-2); color: var(--muted); vertical-align: 1px; }
+.tag-bad { background: var(--bad); color: #fff; }
+.dir-row { display: grid; grid-template-columns: 58px 1fr 44px; gap: 8px; align-items: center; margin: 6px 0; font-size: 0.9rem; }
+.dir-row b { text-align: right; font-variant-numeric: tabular-nums; }
+.dir-bar { height: 10px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.dir-bar i { display: block; height: 100%; border-radius: 99px; }
+.dir-bar .k-zseb { background: var(--series-3); }
+.dir-bar .k-bal, .dir-bar .k-jobb { background: var(--series-2); }
+.log-dir { font-size: 0.8rem; color: var(--muted); margin: -4px 0 6px; }

@@ -155,3 +155,61 @@ describe('frame-statisztika', () => {
     expect(pct(1, 0)).toBeNull();
   });
 });
+
+describe('maradékbábu-térkép: bővített statisztika', async () => {
+  const { leaveTable, avgFirstBall } = await import('../src/domain/scoring');
+  const { fmtRate } = await import('../src/util/format');
+  // 1: 9/ (10-es, Z) | 2: 9- (10-es, J) | 3: 8- (7-10, J) | 4: X | 5: 7/ (3-6-10, Z) | 6: 8/ (4-5, B) | 7–9: X | 10: X 9-
+  const frames: Frame[] = [
+    { rolls: [9, 1], pinsLeft: [10], firstBall: 'zseb' },
+    { rolls: [9, 0], pinsLeft: [10], firstBall: 'jobb' },
+    { rolls: [8, 0], pinsLeft: [7, 10], firstBall: 'jobb' },
+    { rolls: [10] },
+    { rolls: [7, 3], pinsLeft: [3, 6, 10], firstBall: 'zseb' },
+    { rolls: [8, 2], pinsLeft: [4, 5], firstBall: 'bal' },
+    { rolls: [10] }, { rolls: [10] }, { rolls: [10], firstBall: 'zseb' },
+    { rolls: [10, 9, 0], pinsLeft: [10] },
+  ];
+  const st = addGameStats(emptyFrameStats(), frames, 10);
+
+  it('egy- és többbábus állások külön', () => {
+    expect(st.singlePinChances).toBe(3);
+    expect(st.singlePinSpares).toBe(1);
+    expect(st.multiPinChances).toBe(3);
+    expect(st.multiPinSpares).toBe(2);
+  });
+  it('első dobás iránya: jelöltek, jelöletlen strike, jelöletlen egyéb', () => {
+    expect(st.dir).toEqual({ zseb: 3, bal: 1, jobb: 2, strike: 4, none: 0 });
+  });
+  it('állások gyakoriság szerint, a legtöbb pinbe kerülő kiemelve', () => {
+    const rows = leaveTable(st);
+    expect(rows[0]).toMatchObject({ key: '10', n: 3, made: 1, missed: 2 });
+    // első dobás átlaga: (9+9+8+10+7+8+10+10+10+10)/10 = 9,1; a 10-es kihagyásai: 2 bent maradt + 2 × 9,1 bónusz
+    expect(avgFirstBall(st)).toBeCloseTo(9.1);
+    expect(rows[0].lostPins).toBeCloseTo(2 + 2 * 9.1);
+    expect(rows[0].worst).toBe(true);
+    const split = rows.find((r) => r.key === '7-10')!;
+    expect(split).toMatchObject({ split: true, missed: 1, worst: false });
+    expect(split.lostPins).toBeCloseTo(2 + 9.1);
+    expect(rows.filter((r) => r.worst)).toHaveLength(1);
+  });
+  it('kis mintánál nincs százalék', () => {
+    expect(fmtRate(4, 9)).toBe('4/9');
+    expect(fmtRate(7, 10)).toBe('70% (7/10)');
+    expect(fmtRate(0, 0)).toBe('–');
+  });
+  it('a pontszám a frame-adatból (iránytól függetlenül)', () => {
+    expect(scoreGame(frames).total).toBe(scoreGame(frames.map(({ rolls }) => ({ rolls }))).total);
+  });
+});
+
+describe('csatorna után', () => {
+  it('a teljes sor nem maradék állás, de spare-lehetőség', () => {
+    const frames: Frame[] = [{ rolls: [0, 3], pinsLeft: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }, ...Array.from({ length: 9 }, () => ({ rolls: [0, 0] }))];
+    const st = addGameStats(emptyFrameStats(), frames);
+    expect(st.spareChances).toBe(10);
+    expect(st.leavesKnown).toBe(0);
+    expect(st.multiPinChances).toBe(0);
+    expect(st.leaves.size).toBe(0);
+  });
+});

@@ -1,12 +1,12 @@
 import { coachTips, nextFocus, sessionFeedback, type CoachTip } from '../coach/rules';
-import { pct, sessionFrameStats, worstLeaves, type FrameStats } from '../domain/scoring';
+import { avgFirstBall, leaveTable, sessionFrameStats, type FrameStats, type LeaveRow } from '../domain/scoring';
 import { coldStart } from '../domain/coldstart';
 import { dashboard, goalProgress, type GroupAvg } from '../domain/stats';
 import { typeLabel, type CoachReport, type SessionType } from '../domain/types';
 import { getData, updateSettings } from '../state';
 import { backupReminder, snoozeUntil } from '../storage/backup';
 import { exportJson } from '../storage/io';
-import { esc, fmtAvg, fmtInt, fmtSigned, todayIso } from '../util/format';
+import { esc, fmtAvg, fmtInt, fmtRate, fmtSigned, todayIso } from '../util/format';
 import { mountScoreChart } from './chart';
 import { saveFile } from './files';
 import { coldRow, coldTable } from './prepPage';
@@ -61,33 +61,56 @@ function coachCard(tips: CoachTip[], gamesCount: number, latest?: CoachReport): 
   </section>`;
 }
 
+/** Arány-csempe: kis mintánál (n < 10) a darabszám a fő érték, nem a százalék. */
+const rateTile = (label: string, made: number, n: number) => {
+  const big = n === 0 ? '–' : n < 10 ? `${made}/${n}` : `${Math.round((made / n) * 100)}%`;
+  const small = n === 0 ? 'nincs adat' : n < 10 ? 'kevés adat' : `${made}/${n}`;
+  return tile(label, big, `<div class="tile-sub">${small}</div>`);
+};
+
+function directionBlock(fs: FrameStats): string {
+  const d = fs.dir;
+  const tagged = d.zseb + d.bal + d.jobb;
+  if (tagged === 0) return `<p class="muted small">Az első dobás irányát (zseb / balra / jobbra) a frame-bevitelnél egy koppintással jelölheted.</p>`;
+  // A jelöletlen strike zsebnek számít.
+  const zseb = d.zseb + d.strike;
+  const total = zseb + d.bal + d.jobb;
+  const bar = (label: string, v: number, cls: string) =>
+    `<div class="dir-row"><span>${label}</span><div class="dir-bar"><i class="${cls}" style="width:${((v / total) * 100).toFixed(1)}%"></i></div><b>${total < 10 ? v : `${Math.round((v / total) * 100)}%`}</b></div>`;
+  return `<h3 class="sub-h">Első dobás <span class="hint">${total} dobás${d.strike ? ', a strike zsebnek számít' : ''}${d.none ? `; ${d.none} jelöletlen` : ''}</span></h3>
+    ${bar('Balra', d.bal, 'k-bal')}${bar('Zseb', zseb, 'k-zseb')}${bar('Jobbra', d.jobb, 'k-jobb')}`;
+}
+
 function frameCard(fs: FrameStats, corner: number): string {
   if (fs.games === 0)
     return `<section class="card"><h2>Frame-statisztika</h2><p class="muted">Egy játék sorában a ▦ gombbal frame-enként, bábu-ábrával is rögzíthetsz. Ebből számolom a strike-, spare- és split-arányt.</p></section>`;
-  const p = (a: number, b: number) => {
-    const v = pct(a, b);
-    return v === null ? '–' : `${Math.round(v)}%`;
-  };
-  const worst = worstLeaves(fs);
-  const sub = (t: string) => `<div class="tile-sub">${esc(t)}</div>`;
+  const rows = leaveTable(fs);
+  const shown = rows.slice(0, 8);
+  const rowHtml = (r: LeaveRow) => `<tr class="${r.worst ? 'worst' : ''}">
+      <td>${esc(r.key)}${r.split ? ' <span class="tag">split</span>' : ''}${r.worst ? ' <span class="tag tag-bad">legtöbb pin</span>' : ''}</td>
+      <td class="num">${esc(fmtRate(r.made, r.n))}</td>
+      <td class="num">${r.missed ? `−${Math.round(r.lostPins)}` : '0'}</td></tr>`;
   return `<section class="card">
     <h2>Frame-statisztika <span class="hint">${fs.games} részletes játék</span></h2>
     <div class="tiles tiles-in">
-      ${tile('Strike', p(fs.strikes, fs.strikeChances), sub(`${fs.strikes}/${fs.strikeChances}`))}
-      ${tile('Spare', p(fs.spares, fs.spareChances), sub(`${fs.spares}/${fs.spareChances}`))}
+      ${rateTile('Strike', fs.strikes, fs.strikeChances)}
+      ${rateTile('Spare', fs.spares, fs.spareChances)}
       ${tile('Nyitott / játék', fmtAvg(fs.opens / fs.games))}
-      ${tile('Egy bábus spare', p(fs.singlePinSpares, fs.singlePinChances), sub(`${fs.singlePinSpares}/${fs.singlePinChances}`))}
-      ${tile(`${corner}-es bábu`, fs.cornerLeaves ? p(fs.cornerSpares, fs.cornerLeaves) : '–', sub(`${fs.cornerLeaves}× maradt`))}
-      ${tile('Split', p(fs.splits, fs.leavesKnown), sub(`${fs.splits}× · ${fs.splitsConverted} leütve`))}
+      ${rateTile('Egy bábus', fs.singlePinSpares, fs.singlePinChances)}
+      ${rateTile('Több bábus', fs.multiPinSpares, fs.multiPinChances)}
+      ${rateTile(`${corner}-es bábu`, fs.cornerSpares, fs.cornerLeaves)}
+      ${tile('Split', fs.leavesKnown < 10 ? `${fs.splits}/${fs.leavesKnown}` : `${Math.round((fs.splits / fs.leavesKnown) * 100)}%`, `<div class="tile-sub">${fs.splits}× · ${fs.splitsConverted} leütve</div>`)}
     </div>
     ${
-      worst.length
-        ? `<h3 class="sub-h">Leggyakrabban elhibázott állások</h3>
-           <table class="tbl"><thead><tr><th>Állás</th><th>Próba</th><th>Leütve</th></tr></thead><tbody>
-           ${worst.map((w) => `<tr><td>${esc(w.key)}</td><td>${w.n}</td><td class="num">${w.made}/${w.n}</td></tr>`).join('')}
-           </tbody></table>`
-        : ''
+      rows.length
+        ? `<h3 class="sub-h">Spare-állások <span class="hint">gyakoriság szerint</span></h3>
+           <table class="tbl leave-tbl"><thead><tr><th>Állás</th><th>Leütve</th><th>Pin</th></tr></thead><tbody>
+           ${shown.map(rowHtml).join('')}</tbody></table>
+           ${rows.length > shown.length ? `<details class="tips-more"><summary>Mind a(z) ${rows.length} állás</summary><table class="tbl leave-tbl"><tbody>${rows.slice(8).map(rowHtml).join('')}</tbody></table></details>` : ''}
+           <p class="muted small">„Pin”: becsült veszteség a kihagyásokból (bent maradt bábuk + elmaradt spare-bónusz, átlagosan ${fmtAvg(avgFirstBall(fs))} pin/kihagyás).</p>`
+        : '<p class="muted small">Bábu-ábrával rögzített állás még nincs.</p>'
     }
+    ${directionBlock(fs)}
   </section>`;
 }
 

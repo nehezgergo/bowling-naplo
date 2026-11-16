@@ -143,8 +143,16 @@ export interface FrameStats {
   singlePinSpares: number;
   cornerLeaves: number;
   cornerSpares: number;
-  /** Állás → kísérletek / sikeres. Kulcs: pl. "3-6-10". */
-  leaves: Map<string, { n: number; made: number }>;
+  /** Két- vagy többbábus (ismert) állások. */
+  multiPinChances: number;
+  multiPinSpares: number;
+  /** A frame-ek első dobásainak összege és száma (az elmaradt spare-bónusz becsléséhez). */
+  firstBallSum: number;
+  firstBallCount: number;
+  /** Az első dobás iránya: jelölt (zseb/bal/jobb), jelöletlen strike, jelöletlen egyéb. */
+  dir: { zseb: number; bal: number; jobb: number; strike: number; none: number };
+  /** Állás → kísérletek / sikeres / a kihagyások után bent maradt bábuk. Kulcs: pl. "3-6-10". */
+  leaves: Map<string, { n: number; made: number; remaining: number }>;
 }
 
 export const leaveKey = (pins: number[]) => [...pins].sort((a, b) => a - b).join('-');
@@ -153,7 +161,8 @@ export function emptyFrameStats(): FrameStats {
   return {
     games: 0, frames: 0, strikes: 0, strikeChances: 0, spares: 0, spareChances: 0, opens: 0,
     leavesKnown: 0, splits: 0, splitsConverted: 0, singlePinChances: 0, singlePinSpares: 0,
-    cornerLeaves: 0, cornerSpares: 0, leaves: new Map(),
+    cornerLeaves: 0, cornerSpares: 0, multiPinChances: 0, multiPinSpares: 0, firstBallSum: 0, firstBallCount: 0,
+    dir: { zseb: 0, bal: 0, jobb: 0, strike: 0, none: 0 }, leaves: new Map(),
   };
 }
 
@@ -166,6 +175,11 @@ export function addGameStats(acc: FrameStats, frames: Frame[], corner = 10): Fra
     let rack = 10;
     let fresh = true;
     let hadMark = false;
+    acc.firstBallSum += f.rolls[0];
+    acc.firstBallCount++;
+    if (f.firstBall) acc.dir[f.firstBall]++;
+    else if (f.rolls[0] === 10) acc.dir.strike++;
+    else acc.dir.none++;
     f.rolls.forEach((r, k) => {
       // Az 1–9. frame-ben csak az első dobás „friss”; a 10.-ben minden új állás az.
       if (fresh) {
@@ -186,8 +200,9 @@ export function addGameStats(acc: FrameStats, frames: Frame[], corner = 10): Fra
           if (k === 1) hadMark = true;
         }
         const leave = f.pinsLeft;
-        // Csak akkor használjuk, ha az ábra egyezik a dobás számával.
-        if (leave && leave.length === rack) {
+        // Csak akkor használjuk, ha az ábra egyezik a dobás számával. A teljes sor
+        // (csatorna után mind a 10 áll) nem „maradék állás”: a spare-arányba beszámít, az álláslistába nem.
+        if (leave && leave.length === rack && leave.length < 10) {
           acc.leavesKnown++;
           const split = f.split ?? isSplit(leave);
           if (split) {
@@ -201,11 +216,15 @@ export function addGameStats(acc: FrameStats, frames: Frame[], corner = 10): Fra
               acc.cornerLeaves++;
               if (made) acc.cornerSpares++;
             }
+          } else {
+            acc.multiPinChances++;
+            if (made) acc.multiPinSpares++;
           }
           const key = leaveKey(leave);
-          const e = acc.leaves.get(key) ?? { n: 0, made: 0 };
+          const e = acc.leaves.get(key) ?? { n: 0, made: 0, remaining: 0 };
           e.n++;
           if (made) e.made++;
+          else e.remaining += rack - r;
           acc.leaves.set(key, e);
         }
         rack = 10;
@@ -224,6 +243,39 @@ export function sessionFrameStats(sessions: Session[], corner = 10): FrameStats 
 }
 
 export const pct = (a: number, b: number): number | null => (b > 0 ? (a / b) * 100 : null);
+
+/** Az első dobás átlaga (bábu); ennyi bónuszt veszít egy kihagyott spare. */
+export const avgFirstBall = (st: FrameStats) => (st.firstBallCount ? st.firstBallSum / st.firstBallCount : 0);
+
+export interface LeaveRow {
+  key: string;
+  pins: number;
+  n: number;
+  made: number;
+  missed: number;
+  split: boolean;
+  /**
+   * Becsült pinveszteség a kihagyások miatt: a bent maradt bábuk, plusz az elmaradt
+   * spare-bónusz (a következő dobás, az első dobásaid átlagával becsülve).
+   */
+  lostPins: number;
+  /** Ez az állás viszi el a legtöbb pint. */
+  worst: boolean;
+}
+
+/** Állásonkénti spare-statisztika gyakoriság szerint; a legtöbb pinbe kerülő kiemelve. */
+export function leaveTable(st: FrameStats): LeaveRow[] {
+  const bonus = avgFirstBall(st);
+  const rows = [...st.leaves.entries()].map(([key, v]) => {
+    const pins = key.split('-').map(Number);
+    const missed = v.n - v.made;
+    return { key, pins: pins.length, n: v.n, made: v.made, missed, split: isSplit(pins), lostPins: v.remaining + missed * bonus, worst: false };
+  });
+  rows.sort((a, b) => b.n - a.n || b.lostPins - a.lostPins || a.key.localeCompare(b.key));
+  const max = Math.max(0, ...rows.map((r) => r.lostPins));
+  if (max > 0) rows.find((r) => r.lostPins === max)!.worst = true;
+  return rows;
+}
 
 /** A leggyakrabban elhibázott állások (legalább `minN` kísérlettel). */
 export function worstLeaves(st: FrameStats, minN = 2, limit = 3) {

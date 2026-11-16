@@ -12,7 +12,10 @@ interface EFrame {
   stand: (number[] | undefined)[];
   pinsLeft?: number[];
   pinsAfter?: number[];
+  firstBall?: Frame['firstBall'];
 }
+
+const DIR_SHORT: Record<NonNullable<Frame['firstBall']>, string> = { zseb: 'Z', bal: 'B', jobb: 'J' };
 
 export interface FrameEditorOptions {
   title: string;
@@ -45,6 +48,7 @@ const toFrame = (f: EFrame): Frame => {
   const out: Frame = { rolls: [...f.rolls] };
   if (f.pinsLeft) out.pinsLeft = f.pinsLeft;
   if (f.pinsAfter) out.pinsAfter = f.pinsAfter;
+  if (f.firstBall) out.firstBall = f.firstBall;
   return out;
 };
 
@@ -54,7 +58,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
   const hadFrames = !!opts.frames?.length;
   const frames: EFrame[] = Array.from({ length: 10 }, (_, i) => {
     const f = opts.frames?.[i];
-    return f ? { rolls: [...f.rolls], stand: [], pinsLeft: f.pinsLeft, pinsAfter: f.pinsAfter } : { rolls: [], stand: [] };
+    return f ? { rolls: [...f.rolls], stand: [], pinsLeft: f.pinsLeft, pinsAfter: f.pinsAfter, firstBall: f.firstBall } : { rolls: [], stand: [] };
   });
   const firstIncomplete = () => {
     const i = frames.findIndex((f, k) => !isFrameComplete(f, k));
@@ -96,7 +100,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
         else for (let k = 0; k < boxes; k++) cells.push(marks[k] ?? '');
         const split = f.pinsLeft && isSplit(f.pinsLeft) && f.rolls[0] !== 10;
         return `<button type="button" class="fe-cell${i === cur ? ' cur' : ''}${i === 9 ? ' tenth' : ''}" data-frame="${i}" aria-label="${i + 1}. frame">
-          <span class="fe-no">${i + 1}</span>
+          <span class="fe-no">${i + 1}${f.firstBall ? `<i class="fe-dir"> ${DIR_SHORT[f.firstBall]}</i>` : ''}</span>
           <span class="fe-marks">${cells.map((c, k) => `<span class="${k === 0 && split ? 'split' : ''}">${esc(c)}</span>`).join('')}</span>
           <span class="fe-cum">${cumulative[i] ?? ''}</span>
         </button>`;
@@ -138,15 +142,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
                      .join('')}</div>`,
                  ).join('')}
                </div>
-               <div class="fe-actions">
-                 ${
-                   fresh
-                     ? `<button type="button" class="btn fe-big" data-act="strike">X<small>Strike</small></button>`
-                     : `<button type="button" class="btn fe-big" data-act="spare">/<small>Spare</small></button>`
-                 }
-                 <button type="button" class="btn fe-big" data-act="miss">−<small>${fresh ? 'Gurítás (0)' : 'Egyik sem'}</small></button>
-                 <button type="button" class="btn btn-primary fe-big" data-act="commit" ${sel.size === 0 ? 'disabled' : ''}>${knocked}<small>ledöntve</small></button>
-               </div>`
+               ${actionsHtml(fresh, f.rolls.length === 0, knocked)}`
         }
       </div>
       <div class="fe-bottom">
@@ -156,9 +152,33 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
       </div>`;
   };
 
-  const commit = (standingAfter: number[]) => {
+  /** Gombsor: első dobás jelölés nélkül / jelölt bábukkal (irány = rögzítés), spare-kísérlet. */
+  const actionsHtml = (fresh: boolean, firstOfFrame: boolean, knocked: number) => {
+    if (!fresh)
+      return `<div class="fe-actions">
+        <button type="button" class="btn fe-big fe-ok" data-act="spare">/<small>Bedobtam</small></button>
+        <button type="button" class="btn fe-big" data-act="miss">−<small>Nem</small></button>
+        <button type="button" class="btn btn-primary fe-big" data-act="commit" ${sel.size === 0 ? 'disabled' : ''}>${knocked}<small>ledöntve</small></button>
+      </div>`;
+    if (sel.size === 0 || !firstOfFrame)
+      return `<div class="fe-actions">
+        <button type="button" class="btn fe-big fe-ok" data-act="strike">X<small>Strike</small></button>
+        <button type="button" class="btn fe-big" data-act="miss">−<small>Mind áll / csatorna</small></button>
+        <button type="button" class="btn btn-primary fe-big" data-act="commit" ${sel.size === 0 ? 'disabled' : ''}>${knocked}<small>ledöntve</small></button>
+      </div>`;
+    return `<div class="fe-hint">${knocked} ledöntve · merre ment az első dobás? <span class="muted">(nem kötelező)</span></div>
+      <div class="fe-actions fe-dirs">
+        <button type="button" class="btn fe-big" data-dir="bal">←<small>Balra</small></button>
+        <button type="button" class="btn fe-big fe-ok" data-dir="zseb">◎<small>Zseb</small></button>
+        <button type="button" class="btn fe-big" data-dir="jobb">→<small>Jobbra</small></button>
+        <button type="button" class="btn btn-primary fe-big" data-act="commit">✓<small>Rögzít</small></button>
+      </div>`;
+  };
+
+  const commit = (standingAfter: number[], dir?: Frame['firstBall']) => {
     const f = frames[cur];
     const { standing, fresh } = rackBefore(f);
+    if (dir && f.rolls.length === 0) f.firstBall = dir;
     const after = standingAfter.filter((p) => standing.includes(p)).sort((a, b) => a - b);
     f.rolls.push(standing.length - after.length);
     f.stand.push(after);
@@ -190,6 +210,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
       delete f.pinsLeft;
       delete f.pinsAfter;
     }
+    if (f.rolls.length === 0) delete f.firstBall;
     cur = i;
     sel = new Set();
     render();
@@ -205,6 +226,8 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
       render();
       return;
     }
+    const dirBtn = t.closest<HTMLButtonElement>('[data-dir]');
+    if (dirBtn && cur < 10) return commit([...sel], dirBtn.dataset.dir as Frame['firstBall']);
     const cell = t.closest<HTMLButtonElement>('[data-frame]');
     if (cell) {
       const i = Number(cell.dataset.frame);

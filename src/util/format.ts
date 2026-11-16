@@ -5,6 +5,13 @@ export const esc = (s: unknown): string =>
 export const fmtAvg = (n: number | null | undefined): string =>
   n === null || n === undefined ? '–' : n.toLocaleString('hu-HU', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
+/**
+ * Arány kiírása: kis mintánál (n < min) csak a darabszám, hogy ne tűnjön
+ * magabiztosabbnak, mint amit az adat elbír; utána százalék is.
+ */
+export const fmtRate = (made: number, n: number, min = 10): string =>
+  n === 0 ? '–' : n < min ? `${made}/${n}` : `${Math.round((made / n) * 100)}% (${made}/${n})`;
+
 export const fmtInt = (n: number | null | undefined): string => (n === null || n === undefined ? '–' : String(n));
 
 export const fmtSigned = (n: number | null | undefined): string => {

@@ -212,6 +212,7 @@ export function buildCoachMessage(data: AppData, today: string, question?: strin
       `${fs.games} részletesen rögzített játék. Strike ${p0(pct(fs.strikes, fs.strikeChances))} (${fs.strikes}/${fs.strikeChances}), spare ${p0(pct(fs.spares, fs.spareChances))} (${fs.spares}/${fs.spareChances}), nyitott frame / játék ${(fs.opens / fs.games).toFixed(1)}.`,
       `Egy bábus spare ${p0(pct(fs.singlePinSpares, fs.singlePinChances))} (${fs.singlePinSpares}/${fs.singlePinChances}); ${corner}-es bábu egyedül ${fs.cornerLeaves}×, leütve ${fs.cornerSpares}; split ${fs.splits}× (${p0(pct(fs.splits, fs.leavesKnown))} az ismert állásokból), leütve ${fs.splitsConverted}.`,
       `Leggyakrabban elhibázott állások: ${worstLeaves(fs, 2, 5).map((w) => `${w.key} (${w.made}/${w.n})`).join(', ') || '–'}`,
+      `Többbábus spare ${fs.multiPinSpares}/${fs.multiPinChances}. Első dobás iránya (jelölt): zseb ${fs.dir.zseb + fs.dir.strike} (a strike zsebnek számít), balra ${fs.dir.bal}, jobbra ${fs.dir.jobb}.`,
     );
   }
   if (tips.length) out.push('\n## Az app beépített elemzésének észrevételei', ...tips.map((t) => `- ${t.title}`));
