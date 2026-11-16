@@ -1,4 +1,4 @@
-import { emptyData, type AppData, type CoachReport, type Session, type Settings } from './domain/types';
+import { emptyData, setSessionTypes, type AppData, type CoachReport, type Session, type Settings } from './domain/types';
 import { load, save } from './storage/db';
 
 let data: AppData = emptyData();
@@ -7,6 +7,7 @@ export const getData = () => data;
 
 export async function init(): Promise<void> {
   data = await load();
+  setSessionTypes(data.settings.sessionTypes);
 }
 
 async function commit(): Promise<void> {
@@ -27,6 +28,7 @@ export async function deleteSession(id: string): Promise<void> {
 
 export async function updateSettings(patch: Partial<Settings>): Promise<void> {
   data.settings = { ...data.settings, ...patch };
+  setSessionTypes(data.settings.sessionTypes);
   await commit();
 }
 
@@ -42,6 +44,7 @@ export async function deleteCoachReport(id: string): Promise<void> {
 
 export async function replaceAll(next: AppData): Promise<void> {
   data = next;
+  setSessionTypes(data.settings.sessionTypes);
   await commit();
 }
 

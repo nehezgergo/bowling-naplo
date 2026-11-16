@@ -4,7 +4,7 @@
  * kevés adatból ne vonjon le elhamarkodott következtetést.
  */
 import { addGameStats, emptyFrameStats, pct, sessionFrameStats } from '../domain/scoring';
-import { average, flattenGames, isCompetition, sessionAverage, type GameRef } from '../domain/stats';
+import { average, flattenGames, isCompetition, isTraining, sessionAverage, type GameRef } from '../domain/stats';
 import type { Profile, Session, Settings } from '../domain/types';
 import { fmtAvg } from '../util/format';
 
@@ -80,7 +80,7 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
   }
 
   // 2) Edzés–verseny különbség.
-  const tr = games.filter((g) => g.type === 'edzes').map((g) => g.score);
+  const tr = games.filter((g) => isTraining(g.type)).map((g) => g.score);
   const co = games.filter((g) => isCompetition(g.type)).map((g) => g.score);
   if (tr.length >= 6 && co.length >= 6) {
     const gap = average(co)! - average(tr)!;

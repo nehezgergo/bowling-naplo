@@ -2,10 +2,13 @@ import { coachTips, nextFocus, sessionFeedback, type CoachTip } from '../coach/r
 import { pct, sessionFrameStats, worstLeaves, type FrameStats } from '../domain/scoring';
 import { dashboard, goalProgress, type GroupAvg } from '../domain/stats';
 import { typeLabel, type CoachReport, type SessionType } from '../domain/types';
-import { getData } from '../state';
+import { getData, updateSettings } from '../state';
+import { backupReminder, snoozeUntil } from '../storage/backup';
+import { exportJson } from '../storage/io';
 import { esc, fmtAvg, fmtInt, fmtSigned, todayIso } from '../util/format';
 import { mountScoreChart } from './chart';
-import { takeJustSaved } from './shell';
+import { saveFile } from './files';
+import { takeJustSaved, toast } from './shell';
 
 const tile = (label: string, value: string, extra = '') =>
   `<div class="tile"><div class="tile-value">${value}</div><div class="tile-label">${esc(label)}</div>${extra}</div>`;
@@ -86,6 +89,19 @@ function frameCard(fs: FrameStats, corner: number): string {
   </section>`;
 }
 
+function backupBanner(): string {
+  const r = backupReminder(getData());
+  if (!r) return '';
+  const when = r.days === null ? 'Még nem készítettél mentést.' : `${r.days} napja nem mentettél.`;
+  return `<section class="card backup-banner" id="backupBanner" role="region" aria-label="Mentési emlékeztető">
+    <div><b>${when}</b> <span class="muted">${r.changed} alkalom van csak ezen a telefonon. Ments a Drive-ra vagy az iCloudba.</span></div>
+    <div class="backup-actions">
+      <button type="button" class="btn btn-primary" id="backupNow">Mentés most</button>
+      <button type="button" class="btn btn-ghost" id="backupLater">Később</button>
+    </div>
+  </section>`;
+}
+
 export function renderHome(root: HTMLElement): void {
   const { sessions, settings } = getData();
   const savedId = takeJustSaved();
@@ -121,6 +137,7 @@ export function renderHome(root: HTMLElement): void {
           </section>`
         : ''
     }
+    ${backupBanner()}
     <section class="hero card">
       <div class="hero-label">Összátlag</div>
       <div class="hero-value">${fmtAvg(d.all.average)}</div>
@@ -163,4 +180,15 @@ export function renderHome(root: HTMLElement): void {
 
   mountScoreChart(root.querySelector('#chartCard')!, d.games, { goal: settings.goalAverage });
   root.querySelector('#fbClose')?.addEventListener('click', () => root.querySelector('#feedback')?.remove());
+  root.querySelector('#backupNow')?.addEventListener('click', async () => {
+    if (await saveFile(`bowling-naplo-${todayIso()}.json`, exportJson(getData()), 'application/json')) {
+      await updateSettings({ lastExportAt: new Date().toISOString(), backupSnoozeUntil: undefined });
+      toast('Mentés elkészült');
+      root.querySelector('#backupBanner')?.remove();
+    }
+  });
+  root.querySelector('#backupLater')?.addEventListener('click', async () => {
+    await updateSettings({ backupSnoozeUntil: snoozeUntil() });
+    root.querySelector('#backupBanner')?.remove();
+  });
 }

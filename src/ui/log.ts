@@ -1,5 +1,5 @@
 import { average, NO_BALL, sessionAverage } from '../domain/stats';
-import { SESSION_TYPES, typeLabel, type Session } from '../domain/types';
+import { getSessionTypes, typeKind, typeLabel, type Session } from '../domain/types';
 import { getData } from '../state';
 import { esc, fmtAvg, fmtDate, todayIso } from '../util/format';
 
@@ -52,6 +52,18 @@ export function filterSessions(sessions: Session[], f: LogFilter, today = todayI
   });
 }
 
+/** A beállított típusok, plusz a régi alkalmakban még előforduló, azóta törölt típusok. */
+export function typeOptions(sessions: Session[]): { id: string; label: string }[] {
+  const list = getSessionTypes().map((t) => ({ id: t.id, label: t.label }));
+  const known = new Set(list.map((t) => t.id));
+  for (const s of sessions)
+    if (!known.has(s.type)) {
+      known.add(s.type);
+      list.push({ id: s.type, label: typeLabel(s.type) });
+    }
+  return list;
+}
+
 const opt = (value: string, label: string, cur: string) =>
   `<option value="${esc(value)}"${value === cur ? ' selected' : ''}>${esc(label)}</option>`;
 
@@ -79,7 +91,7 @@ export function renderLog(root: HTMLElement): void {
                 <span class="log-avg">${fmtAvg(sessionAverage(s))}</span>
               </div>
               <div class="log-meta">
-                <span class="badge t-${s.type}">${esc(typeLabel(s.type))}</span>
+                <span class="badge k-${typeKind(s.type)}">${esc(typeLabel(s.type))}</span>
                 ${s.ball ? `<span class="badge">${esc(s.ball)}</span>` : ''}
                 ${s.eventName ? `<span class="muted">${esc(s.eventName)}</span>` : ''}
               </div>
@@ -96,7 +108,7 @@ export function renderLog(root: HTMLElement): void {
   root.innerHTML = `
     <h1 class="page-title">Napló</h1>
     <div class="filters">
-      <select id="fType" aria-label="Típus">${opt('', 'Minden típus', f.type)}${SESSION_TYPES.map((t) => opt(t.id, t.label, f.type)).join('')}</select>
+      <select id="fType" aria-label="Típus">${opt('', 'Minden típus', f.type)}${typeOptions(sessions).map((t) => opt(t.id, t.label, f.type)).join('')}</select>
       <select id="fBall" aria-label="Golyó">${opt('', 'Minden golyó', f.ball)}${ballOptions.map((b) => opt(b, b, f.ball)).join('')}</select>
       <select id="fPeriod" aria-label="Időszak">
         ${opt('all', 'Teljes idő', f.period)}${opt('30', 'Utolsó 30 nap', f.period)}${opt('90', 'Utolsó 90 nap', f.period)}

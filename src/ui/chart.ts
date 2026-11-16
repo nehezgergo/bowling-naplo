@@ -1,12 +1,12 @@
-import { isCompetition, movingAverage, trend, type GameRef } from '../domain/stats';
-import { typeLabel } from '../domain/types';
+import { movingAverage, trend, type GameRef } from '../domain/stats';
+import { typeKind, typeLabel } from '../domain/types';
 import { fmtAvg, fmtSigned } from '../util/format';
 
 export type ChartRange = '50' | '100' | 'all';
 const RANGE_KEY = 'bowling-naplo-chart-range';
 
 type Cat = 'edzes' | 'verseny' | 'egyeb';
-const catOf = (g: GameRef): Cat => (g.type === 'edzes' ? 'edzes' : isCompetition(g.type) ? 'verseny' : 'egyeb');
+const catOf = (g: GameRef): Cat => typeKind(g.type);
 const CAT_LABEL: Record<Cat, string> = { edzes: 'Edzés', verseny: 'Verseny', egyeb: 'Egyéb' };
 
 /** Pont-alak kategóriánként: a szín mellett az alak is megkülönböztet. */

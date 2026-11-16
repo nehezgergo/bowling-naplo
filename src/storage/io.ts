@@ -5,7 +5,8 @@
 import { parseAdvice } from '../coach/prompt';
 import { isGameComplete, scoreGame } from '../domain/scoring';
 import {
-  SESSION_TYPES,
+  getSessionTypes,
+  typeLabel,
   type AppData,
   type CoachReport,
   type Competition,
@@ -14,9 +15,11 @@ import {
   type Session,
   type SessionCoach,
   type SessionType,
+  type SessionTypeDef,
   type Settings,
+  type TypeKind,
 } from '../domain/types';
-import { normalize } from './db';
+import { normalize, validTypes } from './db';
 
 const APP_ID = 'bowling-naplo';
 
@@ -35,6 +38,8 @@ export interface ImportResult {
   settings?: Settings;
   /** Edzőnapló bejegyzések (csak JSON-ban). */
   coachReports: CoachReport[];
+  /** Az importált alkalmakban szereplő, a jelenlegi listában még nem létező típusok. */
+  newTypes: SessionTypeDef[];
   warnings: string[];
   format: 'json' | 'csv';
 }
@@ -62,7 +67,6 @@ export function mergeReports(existing: CoachReport[], incoming: CoachReport[]): 
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const TYPE_IDS = new Set(SESSION_TYPES.map((t) => t.id));
 
 function validFrames(frames: unknown, score: number): Frame[] | undefined {
   if (!Array.isArray(frames)) return undefined;
@@ -84,8 +88,8 @@ function cleanSession(raw: unknown, idx: number, warnings: string[], uid: () => 
     warnings.push(`${label}: hibás dátum (${String(r.date)}), kihagyva.`);
     return null;
   }
-  const type: SessionType = r.type && TYPE_IDS.has(r.type) ? r.type : 'egyeb';
-  if (r.type !== type) warnings.push(`${label} (${r.date}): ismeretlen típus „${String(r.type)}”, „Egyéb” lett.`);
+  const type: SessionType = typeof r.type === 'string' && r.type ? r.type : 'egyeb';
+  if (r.type !== type) warnings.push(`${label} (${r.date}): hiányzó típus, „Egyéb” lett.`);
   const games: Game[] = [];
   (Array.isArray(r.games) ? r.games : []).forEach((g, k) => {
     const score = Number(g?.score);
@@ -132,12 +136,18 @@ export function parseJsonImport(text: string, uid: () => string): ImportResult {
   const sessions = obj.sessions.map((s, i) => cleanSession(s, i, warnings, uid)).filter((s): s is Session => s !== null);
   const settings = obj.settings ? normalize({ sessions: [], settings: obj.settings }).settings : undefined;
   const coachReports = cleanReports(obj.coachReports, warnings);
-  return { sessions, settings, coachReports, warnings, format: 'json' };
+  const fileTypes = validTypes((obj.settings as { sessionTypes?: unknown } | undefined)?.sessionTypes) ?? [];
+  const known = new Set(getSessionTypes().map((t) => t.id));
+  const newTypes: SessionTypeDef[] = [];
+  for (const s of sessions)
+    if (!known.has(s.type)) {
+      known.add(s.type);
+      newTypes.push(fileTypes.find((t) => t.id === s.type) ?? { id: s.type, label: typeLabel(s.type), kind: guessKind(s.type) });
+    }
+  return { sessions, settings, coachReports, newTypes, warnings, format: 'json' };
 }
 
 // ───────────────────────── CSV ─────────────────────────
-
-const typeLabel = (t: SessionType) => SESSION_TYPES.find((x) => x.id === t)!.label;
 
 /** Ékezet- és kisbetű-független kulcs összevetéshez. */
 export const fold = (s: string) =>
@@ -280,17 +290,36 @@ export function parseDate(v: string): string | null {
   return null;
 }
 
-export function parseType(v: string): SessionType | null {
+/** Típus kategóriája a nevéből (új, importált típusnál). */
+export function guessKind(name: string): TypeKind {
+  const f = fold(name);
+  if (f.startsWith('edz') || f.includes('gyakorl') || f.includes('training')) return 'edzes';
+  if (/bajnok|liga|kupa|verseny|torna|lancszem|forduló|fordulo|dontő|donto/.test(f)) return 'verseny';
+  return 'egyeb';
+}
+
+/**
+ * Szöveges típus azonosítása a jelenlegi listában (név vagy azonosító alapján,
+ * ékezettől és kisbetűtől függetlenül). Ha nincs találat: null.
+ */
+export function parseType(v: string, types: SessionTypeDef[] = getSessionTypes()): SessionType | null {
   const f = fold(v);
   if (!f) return null;
-  const hit = SESSION_TYPES.find((t) => fold(t.label) === f || t.id === f.replace(/ /g, '_'));
+  const hit = types.find((t) => fold(t.label) === f || t.id === f.replace(/ /g, '_'));
   if (hit) return hit.id;
-  if (f.startsWith('edz') || f === 'gyakorlas' || f === 'training') return 'edzes';
-  if (f.includes('bajnok') || f.includes('liga')) return 'bajnoksag';
-  if (f.includes('hivatal')) return 'hivatal_kupa';
-  if (f.includes('lancszem')) return 'legerosebb_lancszem';
-  if (f.includes('kupa') || f.includes('verseny') || f.includes('torna')) return 'kupa';
+  // Az alap típusok szokásos rövidítései, ha a típus még létezik.
+  const has = (id: string) => (types.some((t) => t.id === id) ? id : null);
+  if (f.startsWith('edz') || f === 'gyakorlas' || f === 'training') return has('edzes');
+  if (f === 'liga') return has('bajnoksag');
   return null;
+}
+
+/** Új típus létrehozása egy ismeretlen névből (egyedi azonosítóval). */
+export function newTypeFromLabel(label: string, existing: SessionTypeDef[]): SessionTypeDef {
+  const base = fold(label).replace(/ /g, '_') || 'tipus';
+  let id = base;
+  for (let i = 2; existing.some((t) => t.id === id); i++) id = `${base}_${i}`;
+  return { id, label: label.trim(), kind: guessKind(label) };
 }
 
 /** Széles formátum oszlopai: „1. játék”, „jatek2”, „J3”, „game 4”, vagy csak „1”, „2”… */
@@ -331,6 +360,7 @@ export function parseCsvImport(text: string, uid: () => string): ImportResult {
   const opt = (s: string) => (s === '' ? undefined : s);
 
   const groups = new Map<string, Session>();
+  const newTypes: SessionTypeDef[] = [];
   const order: string[] = [];
   const now = new Date().toISOString();
 
@@ -342,10 +372,14 @@ export function parseCsvImport(text: string, uid: () => string): ImportResult {
       return;
     }
     const rawType = get(r, 'type');
-    let type = parseType(rawType);
+    let type = parseType(rawType, [...getSessionTypes(), ...newTypes]);
     if (!type) {
-      if (rawType) warnings.push(`${line}. sor: ismeretlen típus „${rawType}”, „Egyéb” lett.`);
-      type = rawType ? 'egyeb' : 'edzes';
+      if (rawType) {
+        // Ismeretlen típusnév: új típusként felvesszük (a kategóriát a névből becsüljük).
+        const def = newTypeFromLabel(rawType, [...getSessionTypes(), ...newTypes]);
+        newTypes.push(def);
+        type = def.id;
+      } else type = (getSessionTypes().find((t) => t.kind === 'edzes') ?? getSessionTypes()[0]).id;
     }
     const eventName = opt(get(r, 'eventName'));
     const venue = opt(get(r, 'venue'));
@@ -405,12 +439,19 @@ export function parseCsvImport(text: string, uid: () => string): ImportResult {
     s.games.sort((a, b) => a.index - b.index).forEach((g, i) => (g.index = i + 1));
     return true;
   });
-  return { sessions, coachReports: [], warnings, format: 'csv' };
+  return { sessions, coachReports: [], newTypes, warnings, format: 'csv' };
 }
 
 function compact<T extends object>(o: T): T | undefined {
   const e = Object.entries(o).filter(([, v]) => v !== undefined && v !== '');
   return e.length ? (Object.fromEntries(e) as T) : undefined;
+}
+
+/** A típuslista kiegészítése az importból jövő új típusokkal (a meglévők változatlanok). */
+export function withNewTypes(settings: Settings, newTypes: SessionTypeDef[]): Settings {
+  const ids = new Set(settings.sessionTypes.map((t) => t.id));
+  const add = newTypes.filter((t) => !ids.has(t.id));
+  return add.length ? { ...settings, sessionTypes: [...settings.sessionTypes, ...add] } : settings;
 }
 
 export function parseImport(fileName: string, text: string, uid: () => string): ImportResult {

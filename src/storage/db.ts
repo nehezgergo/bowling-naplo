@@ -1,4 +1,4 @@
-import { emptyData, defaultSettings, type AppData } from '../domain/types';
+import { emptyData, defaultSettings, type AppData, type SessionTypeDef } from '../domain/types';
 
 const DB_NAME = 'bowling-naplo';
 const STORE = 'kv';
@@ -33,6 +33,20 @@ async function idbSet(value: AppData): Promise<void> {
   });
 }
 
+const KINDS = new Set(['edzes', 'verseny', 'egyeb']);
+
+/** A típuslista ellenőrzése: csak a hiánytalan elemek maradnak; üres lista helyett null. */
+export function validTypes(raw: unknown): SessionTypeDef[] | null {
+  if (!Array.isArray(raw)) return null;
+  const seen = new Set<string>();
+  const out = raw.filter((t): t is SessionTypeDef => {
+    const ok = t && typeof t.id === 'string' && t.id && typeof t.label === 'string' && t.label.trim() && KINDS.has(t.kind) && !seen.has(t.id);
+    if (ok) seen.add(t.id);
+    return !!ok;
+  });
+  return out.length ? out : null;
+}
+
 /** Hiányzó mezők pótlása régebbi/hiányos adatnál. */
 export function normalize(raw: unknown): AppData {
   const base = emptyData();
@@ -41,7 +55,12 @@ export function normalize(raw: unknown): AppData {
   return {
     schemaVersion: 1,
     sessions: Array.isArray(r.sessions) ? r.sessions : [],
-    settings: { ...defaultSettings(), ...(r.settings ?? {}), profile: { ...(r.settings?.profile ?? {}) } },
+    settings: {
+      ...defaultSettings(),
+      ...(r.settings ?? {}),
+      profile: { ...(r.settings?.profile ?? {}) },
+      sessionTypes: validTypes(r.settings?.sessionTypes) ?? defaultSettings().sessionTypes,
+    },
     coachReports: Array.isArray(r.coachReports) ? r.coachReports : [],
   };
 }

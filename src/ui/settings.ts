@@ -1,18 +1,25 @@
 import { cleanKey, getApiKey, maskKey, setApiKey, verifyApiKey } from '../coach/claude';
-import type { Profile, Settings } from '../domain/types';
+import { KIND_LABEL, type Profile, type SessionTypeDef, type Settings, type TypeKind } from '../domain/types';
 import { getData, replaceAll, updateSettings } from '../state';
 import {
   csvTemplate,
   exportCsv,
   exportJson,
+  fold,
   mergeReports,
   mergeSessions,
+  newTypeFromLabel,
   parseImport,
   summarizeImport,
+  withNewTypes,
   type ImportResult,
 } from '../storage/io';
 import { esc, fmtDate, todayIso, uid } from '../util/format';
+import { saveFile } from './files';
 import { applyTheme, toast } from './shell';
+
+/** Hány alkalom használja a típust. */
+const typeUsage = (id: string) => getData().sessions.filter((x) => x.type === id).length;
 
 const opt = (value: string, label: string, cur: string | undefined) =>
   `<option value="${esc(value)}"${value === (cur ?? '') ? ' selected' : ''}>${esc(label)}</option>`;
@@ -42,6 +49,35 @@ export function renderSettings(root: HTMLElement): void {
         <input id="newBall" placeholder="pl. 13 lb reaktív" aria-label="Új golyó neve">
         <button type="button" class="btn" id="addBall">Hozzáad</button>
       </div>
+    </section>
+
+    <section class="card form" id="typesCard">
+      <h2>Alkalmak típusai</h2>
+      <p class="muted small">A kategória dönti el, hova számít: <b>Edzés</b> → edzésátlag, <b>Verseny</b> → versenyátlag, <b>Egyéb</b> → csak az összátlag.</p>
+      <ul class="type-list">
+        ${s.sessionTypes
+          .map((t, i) => {
+            const used = typeUsage(t.id);
+            return `<li>
+              <input class="type-label" data-i="${i}" value="${esc(t.label)}" maxlength="40" aria-label="Típus neve">
+              <select class="type-kind" data-i="${i}" aria-label="${esc(t.label)} kategóriája">
+                ${(['edzes', 'verseny', 'egyeb'] as TypeKind[]).map((k) => opt(k, KIND_LABEL[k], t.kind)).join('')}
+              </select>
+              <button type="button" class="icon-btn" data-deltype="${i}" aria-label="${esc(t.label)} törlése"
+                ${used || s.sessionTypes.length <= 1 ? 'disabled' : ''} title="${used ? `${used} alkalom használja` : 'Törlés'}">✕</button>
+              ${used ? `<span class="type-used">${used} alkalom</span>` : ''}
+            </li>`;
+          })
+          .join('')}
+      </ul>
+      <div class="type-new">
+        <input id="newTypeLabel" placeholder="pl. Csapatbajnokság" maxlength="40" aria-label="Új típus neve">
+        <select id="newTypeKind" aria-label="Új típus kategóriája">
+          ${(['verseny', 'edzes', 'egyeb'] as TypeKind[]).map((k) => opt(k, KIND_LABEL[k], 'verseny')).join('')}
+        </select>
+        <button type="button" class="btn" id="addType">Hozzáad</button>
+      </div>
+      <p class="muted small">Használatban lévő típus nem törölhető, de átnevezhető. A régi alkalmak az új nevet kapják.</p>
     </section>
 
     <section class="card form">
@@ -133,6 +169,59 @@ export function renderSettings(root: HTMLElement): void {
     const theme = val('theme') as Settings['theme'];
     await updateSettings({ theme });
     applyTheme(theme);
+  });
+
+  // Típusok: átnevezés, kategória, törlés, új típus.
+  const types = () => getData().settings.sessionTypes;
+  const saveTypes = async (list: SessionTypeDef[], msg: string) => {
+    await updateSettings({ sessionTypes: list });
+    toast(msg);
+  };
+  root.querySelectorAll<HTMLInputElement>('.type-label').forEach((inp) =>
+    inp.addEventListener('change', async () => {
+      const i = Number(inp.dataset.i);
+      const label = inp.value.trim();
+      if (!label) {
+        inp.value = types()[i].label;
+        toast('A típus neve nem lehet üres.', true);
+        return;
+      }
+      if (types().some((t, k) => k !== i && fold(t.label) === fold(label))) {
+        inp.value = types()[i].label;
+        toast('Már van ilyen nevű típus.', true);
+        return;
+      }
+      await saveTypes(types().map((t, k) => (k === i ? { ...t, label } : t)), 'Típus átnevezve');
+    }),
+  );
+  root.querySelectorAll<HTMLSelectElement>('.type-kind').forEach((sel) =>
+    sel.addEventListener('change', async () => {
+      const i = Number(sel.dataset.i);
+      await saveTypes(types().map((t, k) => (k === i ? { ...t, kind: sel.value as TypeKind } : t)), 'Kategória mentve');
+    }),
+  );
+  root.querySelectorAll<HTMLButtonElement>('[data-deltype]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      const i = Number(btn.dataset.deltype);
+      if (typeUsage(types()[i].id) || types().length <= 1) return;
+      await saveTypes(types().filter((_, k) => k !== i), 'Típus törölve');
+      renderSettings(root);
+    }),
+  );
+  const addType = async () => {
+    const label = val('newTypeLabel');
+    if (!label) return;
+    if (types().some((t) => fold(t.label) === fold(label))) {
+      toast('Már van ilyen nevű típus.', true);
+      return;
+    }
+    const def = { ...newTypeFromLabel(label, types()), kind: val('newTypeKind') as TypeKind };
+    await saveTypes([...types(), def], `„${label}” hozzáadva`);
+    renderSettings(root);
+  };
+  root.querySelector('#addType')!.addEventListener('click', addType);
+  root.querySelector('#newTypeLabel')!.addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') addType();
   });
 
   const addBall = async () => {
@@ -266,7 +355,9 @@ function showPreview(root: HTMLElement, fileName: string, res: ImportResult) {
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   const takeSettings = () => !!box.querySelector<HTMLInputElement>('#takeSettings')?.checked;
-  const settingsFor = () => (takeSettings() && res.settings ? { ...res.settings, lastExportAt: data.settings.lastExportAt } : data.settings);
+  // A fájlban szereplő új típusok mindkét esetben bekerülnek a listába.
+  const settingsFor = () =>
+    withNewTypes(takeSettings() && res.settings ? { ...res.settings, lastExportAt: data.settings.lastExportAt } : data.settings, res.newTypes);
 
   box.querySelector('#impCancel')!.addEventListener('click', () => (box.innerHTML = ''));
   box.querySelector('#impMerge')!.addEventListener('click', async () => {
@@ -287,29 +378,3 @@ function showPreview(root: HTMLElement, fileName: string, res: ImportResult) {
 
 const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString('hu-HU', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-/**
- * Fájl mentése. Telefonon a megosztás menüt nyitja (Fájlok, Drive, e-mail),
- * máshol letölti. Igazzal tér vissza, ha a mentés elindult.
- */
-async function saveFile(name: string, content: string, mime: string): Promise<boolean> {
-  const file = new File([content], name, { type: mime });
-  const touch = matchMedia('(pointer: coarse)').matches;
-  if (touch && navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: name });
-      return true;
-    } catch (err) {
-      if ((err as DOMException)?.name === 'AbortError') return false;
-      /* ha a megosztás nem megy, letöltés */
-    }
-  }
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(file);
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  return true;
-}

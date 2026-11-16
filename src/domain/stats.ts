@@ -1,4 +1,4 @@
-import { COMPETITION_TYPES, type Session, type SessionType } from './types';
+import { typeKind, type Session, type SessionType } from './types';
 
 export const NO_BALL = 'Nincs megadva';
 
@@ -107,7 +107,8 @@ export function groupAverages(games: GameRef[], keyOf: (g: GameRef) => string): 
     .sort((a, b) => b.count - a.count);
 }
 
-export const isCompetition = (t: SessionType) => COMPETITION_TYPES.includes(t);
+export const isCompetition = (t: SessionType) => typeKind(t) === 'verseny';
+export const isTraining = (t: SessionType) => typeKind(t) === 'edzes';
 
 export interface Dashboard {
   all: Summary;
@@ -126,7 +127,7 @@ export interface Dashboard {
 export function dashboard(sessions: Session[]): Dashboard {
   const games = flattenGames(sessions);
   const scores = games.map((g) => g.score);
-  const trainingAvg = average(games.filter((g) => g.type === 'edzes').map((g) => g.score));
+  const trainingAvg = average(games.filter((g) => isTraining(g.type)).map((g) => g.score));
   const competitionAvg = average(games.filter((g) => isCompetition(g.type)).map((g) => g.score));
   const last20 = scores.slice(-20);
   const prev20 = scores.slice(-40, -20);

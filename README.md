@@ -43,4 +43,7 @@ npm run preview  # az éles build kipróbálása (service worker is)
    következő cél. Az elemzések az Edzőnaplóba kerülnek (`#/edzo`), és a következő elemzés megkapja őket.
    A kulcs csak az eszközön van (localStorage), az exportba nem kerül. Az SDK csak az első elemzéskor töltődik be.
 
-Következik (opcionális): szinkron több eszköz között; közzététel (GitHub Pages / Netlify).
+Közzétéve: https://nehezgergo.github.io/bowling-naplo/ (minden push után GitHub Actions: tesztek, build, Pages).
+
+További funkciók: szerkeszthető alkalomtípusok kategóriával (edzés / verseny / egyéb) a Beállításokban;
+jól látható visszaigazolás mentéskor; mentési emlékeztető a főoldalon (30 nap után, „Később” = 1 hét).

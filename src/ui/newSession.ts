@@ -1,7 +1,8 @@
 import { average } from '../domain/stats';
 import { scoreGame } from '../domain/scoring';
 import {
-  SESSION_TYPES,
+  getSessionTypes,
+  typeLabel,
   type Competition,
   type Frame,
   type Game,
@@ -10,9 +11,9 @@ import {
   type SessionType,
 } from '../domain/types';
 import { deleteSession, getData, lastSession, upsertSession } from '../state';
-import { esc, fmtAvg, todayIso, uid } from '../util/format';
+import { esc, fmtAvg, fmtDate, todayIso, uid } from '../util/format';
 import { openFrameEditor } from './frameEditor';
-import { navigate, setJustSaved, toast } from './shell';
+import { navigate, setJustSaved, showSaved, toast } from './shell';
 
 /** Szerkesztés alatti alkalom: a pontszámok szövegként, amíg gépelsz. */
 interface Draft {
@@ -71,7 +72,7 @@ function newDraft(): Draft {
   const last = lastSession();
   return {
     date: todayIso(),
-    type: last?.type ?? 'edzes',
+    type: last && getSessionTypes().some((t) => t.id === last.type) ? last.type : (getSessionTypes().find((t) => t.kind === 'edzes') ?? getSessionTypes()[0]).id,
     ball: last?.ball ?? '',
     eventName: '',
     venue: last?.venue ?? '',
@@ -101,6 +102,13 @@ function draftFromSession(s: Session): Draft {
     coach: { ...(s.coach ?? {}) },
     competition: { ...(s.competition ?? {}) },
   };
+}
+
+/** A választható típusok; egy régi alkalom azóta törölt típusa is megjelenik, hogy ne vesszen el. */
+function typeChoices(current: string) {
+  const list = getSessionTypes().map((t) => ({ id: t.id, label: t.label }));
+  if (current && !list.some((t) => t.id === current)) list.push({ id: current, label: typeLabel(current) });
+  return list;
 }
 
 export const parseScore = (v: string): number | null => {
@@ -165,7 +173,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
         <label class="field-label" for="date">Dátum</label>
         <input id="date" type="date" value="${esc(draft.date)}" required>
       </div>
-      <div class="field"><div class="field-label">Típus</div>${chips('type', SESSION_TYPES, draft.type)}</div>
+      <div class="field"><div class="field-label">Típus</div>${chips('type', typeChoices(draft.type), draft.type)}</div>
       <div class="field"><div class="field-label">Golyó</div>${chips('ball', balls.map((b) => ({ id: b, label: b })), draft.ball)}</div>
 
       <div class="field">
@@ -411,7 +419,12 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
     await upsertSession(session);
     clearDraftLocal();
     if (!existing) setJustSaved(session.id);
-    toast(existing ? 'Módosítás mentve' : `Mentve · átlag ${fmtAvg(average(parsed as number[]))}`);
+    const scoresSaved = parsed as number[];
+    showSaved(existing ? 'Módosítás mentve' : 'Alkalom rögzítve', [
+      `${fmtDate(session.date)} · ${typeLabel(session.type)}`,
+      `${scoresSaved.length} játék: ${scoresSaved.join(', ')}`,
+      `Átlag ${fmtAvg(average(scoresSaved))} · legjobb ${Math.max(...scoresSaved)}`,
+    ]);
     navigate(existing ? '#/naplo' : '#/');
   });
 }

@@ -82,8 +82,9 @@ describe('JSON', () => {
     const res = parseJsonImport(text, uid);
     expect(res.sessions.map((s) => s.id)).toEqual(['x', 'z']);
     expect(res.sessions[0].games).toEqual([{ index: 1, score: 150 }]);
-    expect(res.sessions[1].type).toBe('egyeb');
-    expect(res.warnings).toHaveLength(3);
+    expect(res.sessions[1].type).toBe('valami'); // ismeretlen típus: új típusként jön
+    expect(res.newTypes).toEqual([{ id: 'valami', label: 'valami', kind: 'egyeb' }]);
+    expect(res.warnings).toHaveLength(2);
   });
 
   it('a pontszámmal nem egyező frame-adatot eldobja', () => {
@@ -147,8 +148,9 @@ describe('CSV import: korábbi eredmények', () => {
   it('hibás sorok figyelmeztetéssel kimaradnak', () => {
     const res = parseCsvImport('Dátum;Típus;Pontszám\nrossz;Edzés;150\n2025-01-01;Valami;150\n2025-01-02;Edzés;350\n', uid);
     expect(res.sessions).toHaveLength(1);
-    expect(res.sessions[0].type).toBe('egyeb');
-    expect(res.warnings).toHaveLength(4); // dátum, típus, pontszám, üres alkalom
+    expect(res.sessions[0].type).toBe('valami');
+    expect(res.newTypes).toEqual([{ id: 'valami', label: 'Valami', kind: 'egyeb' }]);
+    expect(res.warnings).toHaveLength(3); // dátum, pontszám, üres alkalom
   });
 
   it('hiányzó kötelező oszlop: érthető hiba', () => {
@@ -178,7 +180,7 @@ describe('segédfüggvények', () => {
     expect(parseType('LEGERŐSEBB LÁNCSZEM')).toBe('legerosebb_lancszem');
     expect(parseType('hivatal kupa')).toBe('hivatal_kupa');
     expect(parseType('Liga')).toBe('bajnoksag');
-    expect(parseType('verseny')).toBe('kupa');
+    expect(parseType('verseny')).toBeNull(); // nem létező típus: az import újként veszi fel
     expect(parseType('xyz')).toBeNull();
   });
 });
