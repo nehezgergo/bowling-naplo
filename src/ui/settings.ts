@@ -1,4 +1,4 @@
-import { getApiKey, maskKey, setApiKey } from '../coach/claude';
+import { cleanKey, getApiKey, maskKey, setApiKey, verifyApiKey } from '../coach/claude';
 import type { Profile, Settings } from '../domain/types';
 import { getData, replaceAll, updateSettings } from '../state';
 import {
@@ -69,8 +69,9 @@ export function renderSettings(root: HTMLElement): void {
              <button type="button" class="btn btn-ghost danger-text" id="delKey">Kulcs törlése erről az eszközről</button></div>`
           : `<p class="muted">Személyre szabott elemzéshez a saját Anthropic API-kulcsod kell (console.anthropic.com → API Keys). A claude.ai előfizetés ezt nem tartalmazza. Egy elemzés kb. 5–15 cent.</p>
              <div class="field"><label class="field-label" for="apiKey">API-kulcs</label>
-               <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-api03-…"></div>
-             <button type="button" class="btn btn-primary" id="saveKey">Kulcs mentése</button>`
+               <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" autocapitalize="off" autocorrect="off"></div>
+             <button type="button" class="btn btn-primary" id="saveKey">Kulcs mentése</button>
+             <div id="keyStatus" role="status" aria-live="polite"></div>`
       }
       <p class="muted small">A kulcs csak ezen az eszközön tárolódik, a mentésekbe (export) nem kerül bele. Állíts be havi költési limitet a Console-ban.</p>
     </section>
@@ -156,16 +157,35 @@ export function renderSettings(root: HTMLElement): void {
     renderSettings(root);
   });
 
-  root.querySelector('#saveKey')?.addEventListener('click', () => {
-    const k = val('apiKey');
+  root.querySelector('#saveKey')?.addEventListener('click', async () => {
+    const btn = root.querySelector<HTMLButtonElement>('#saveKey')!;
+    const status = root.querySelector<HTMLElement>('#keyStatus')!;
+    const k = cleanKey(root.querySelector<HTMLInputElement>('#apiKey')!.value);
     if (!k) return;
-    if (!/^sk-ant-api\d*-/.test(k)) {
-      toast('Ez nem API-kulcsnak tűnik. A Console-ban készült kulcs „sk-ant-api…” kezdetű.', true);
+    if (!k.startsWith('sk-ant-')) {
+      status.innerHTML = `<div class="import-box error">Ez nem Anthropic-kulcs: az Anthropic kulcsai „sk-ant-” kezdetűek. Lehet, hogy csak egy része került a vágólapra.</div>`;
       return;
     }
-    setApiKey(k);
-    toast('API-kulcs mentve ezen az eszközön');
-    renderSettings(root);
+    btn.disabled = true;
+    btn.textContent = 'Ellenőrzés…';
+    status.innerHTML = '';
+    const res = await verifyApiKey(k);
+    btn.disabled = false;
+    btn.textContent = 'Kulcs mentése';
+    if (res.ok) {
+      setApiKey(k);
+      toast('API-kulcs ellenőrizve és mentve');
+      renderSettings(root);
+      return;
+    }
+    if (res.reason === 'offline') {
+      // Internet nélkül is elmenthető; az első elemzéskor derül ki, jó-e.
+      setApiKey(k);
+      toast('Kulcs mentve, de nem tudtam ellenőrizni (nincs kapcsolat)');
+      renderSettings(root);
+      return;
+    }
+    status.innerHTML = `<div class="import-box error">${esc(res.message)}</div>`;
   });
   root.querySelector('#delKey')?.addEventListener('click', () => {
     if (!confirm('Törlöd az API-kulcsot erről az eszközről? Az edzőnapló bejegyzései megmaradnak.')) return;

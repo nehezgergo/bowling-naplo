@@ -85,3 +85,12 @@ describe('egyéb', () => {
     expect(exportJson(data())).not.toMatch(/sk-ant|apiKey/i);
   });
 });
+
+describe('API-kulcs beillesztése', async () => {
+  const { cleanKey } = await import('../src/coach/claude');
+  it('eltávolítja a szóközt, sortörést, láthatatlan karaktert és idézőjelet', () => {
+    expect(cleanKey('  sk-ant-api03-abc\n def​ ')).toBe('sk-ant-api03-abcdef');
+    expect(cleanKey('"sk-ant-usr-xyz"')).toBe('sk-ant-usr-xyz');
+    expect(cleanKey('„sk-ant-api03-q”')).toBe('sk-ant-api03-q');
+  });
+});

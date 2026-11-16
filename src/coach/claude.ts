@@ -27,6 +27,33 @@ export function setApiKey(key: string | null): void {
 }
 export const maskKey = (k: string) => (k.length > 16 ? `${k.slice(0, 12)}…${k.slice(-4)}` : '••••');
 
+/** Beillesztéskor bekerülő szóközök, sortörések, láthatatlan karakterek és idézőjelek eltávolítása. */
+export const cleanKey = (k: string) => k.replace(/[\s​-‍﻿"'„”`]/g, '');
+
+export type KeyCheck = { ok: true } | { ok: false; reason: 'invalid' | 'forbidden' | 'offline' | 'other'; message: string };
+
+/**
+ * A kulcs ellenőrzése az Anthropicnál a modell-listával (ingyenes, nem használ tokent).
+ * A formátumot nem találgatjuk: amit az API elfogad, az jó.
+ */
+export async function verifyApiKey(apiKey: string): Promise<KeyCheck> {
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: 15_000 });
+  try {
+    await client.models.list({ limit: 1 });
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof Anthropic.AuthenticationError)
+      return { ok: false, reason: 'invalid', message: 'Az Anthropic nem fogadta el a kulcsot (érvénytelen vagy törölt). A console.anthropic.com → API Keys oldalon készíts újat, és az egészet másold ki.' };
+    if (err instanceof Anthropic.PermissionDeniedError)
+      return { ok: false, reason: 'forbidden', message: 'A kulcs érvényes, de nincs jogosultsága az API-hoz. Nézd meg a Console-ban a kulcs munkaterületét és jogosultságait.' };
+    if (err instanceof Anthropic.APIConnectionError)
+      return { ok: false, reason: 'offline', message: 'Most nem tudtam ellenőrizni (nincs kapcsolat az Anthropic szerverével).' };
+    if (err instanceof Anthropic.APIError) return { ok: false, reason: 'other', message: `Ellenőrzési hiba (${err.status ?? '?'}): ${err.message}` };
+    return { ok: false, reason: 'other', message: err instanceof Error ? err.message : 'Ismeretlen hiba.' };
+  }
+}
+
 export class CoachError extends Error {}
 
 export interface CoachRequest {
