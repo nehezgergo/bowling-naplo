@@ -11,7 +11,7 @@ import {
 } from '../domain/simulation';
 import { defaultSim, type FieldBenchmark, type SimSettings } from '../domain/types';
 import { getData, updateSettings } from '../state';
-import { esc, fmtAvg } from '../util/format';
+import { esc, fmtAvg, times } from '../util/format';
 
 const sim = (): SimSettings => ({ ...defaultSim(), ...(getData().settings.sim ?? {}) });
 const benchmarks = (): FieldBenchmark[] => getData().benchmarks ?? [];
@@ -122,7 +122,7 @@ export function mountLive(el: HTMLElement): void {
       const c = chanceText(t.n ? t.hits / t.n : 0, t.n);
       out.innerHTML = `<div class="live-need">${t.need}</div>
         <p>kell a 2. játékban a ${cutoff}-es határhoz.</p>
-        <p class="muted">Eddig ${t.n} ${second === pools.later ? '2. vagy későbbi' : ''} játékodból ${t.hits}-szer dobtál legalább ennyit: <b>${esc(c.text)}</b>.</p>`;
+        <p class="muted">Eddig ${t.n} ${second === pools.later ? '2. vagy későbbi' : ''} játékodból ${times(t.hits)} dobtál legalább ennyit: <b>${esc(c.text)}</b>.</p>`;
     }
   });
 }

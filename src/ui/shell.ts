@@ -27,7 +27,7 @@ export function toast(msg: string, error = false): void {
  * Jól látható visszaigazolás mentés után: középre úszó kártya pipával és összegzéssel.
  * Koppintásra vagy pár másodperc után eltűnik; Androidon röviden rezeg is.
  */
-export function showSaved(title: string, lines: string[], ms = 3200): void {
+export function showSaved(title: string, lines: string[], ms = 3200, action?: { text: string; source: string }): void {
   document.querySelector('.saved-sheet')?.remove();
   const el = document.createElement('div');
   el.className = 'saved-sheet';
@@ -37,6 +37,7 @@ export function showSaved(title: string, lines: string[], ms = 3200): void {
     <div class="saved-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
     <div class="saved-title"></div>
     <div class="saved-lines"></div>
+    <div class="saved-action" hidden><div class="focus-label">Legközelebb</div><div class="saved-action-text"></div><div class="saved-action-src"></div></div>
     <div class="saved-hint">Koppints a bezáráshoz</div>
   </div>`;
   el.querySelector('.saved-title')!.textContent = title;
@@ -45,6 +46,12 @@ export function showSaved(title: string, lines: string[], ms = 3200): void {
     const d = document.createElement('div');
     d.textContent = l;
     box.appendChild(d);
+  }
+  if (action) {
+    const box = el.querySelector<HTMLElement>('.saved-action')!;
+    box.hidden = false;
+    box.querySelector('.saved-action-text')!.textContent = action.text;
+    box.querySelector('.saved-action-src')!.textContent = action.source;
   }
   const close = () => {
     el.classList.add('out');

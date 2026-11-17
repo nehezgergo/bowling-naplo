@@ -13,6 +13,7 @@ import {
 } from '../domain/types';
 import { deleteSession, getData, lastSession, upsertSession } from '../state';
 import { esc, fmtAvg, fmtDate, todayIso, uid } from '../util/format';
+import { oneAction } from '../coach/oneAction';
 import { openFrameEditor } from './frameEditor';
 import { navigate, setJustSaved, showSaved, toast } from './shell';
 
@@ -447,7 +448,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
       `${fmtDate(session.date)} · ${typeLabel(session.type)}`,
       `${scoresSaved.length} játék: ${scoresSaved.join(', ')}`,
       `Átlag ${fmtAvg(average(scoresSaved))} · legjobb ${Math.max(...scoresSaved)}`,
-    ]);
+    ], 7000, oneAction(getData().sessions, getData().settings.profile));
     navigate(existing ? '#/naplo' : '#/');
   });
 }

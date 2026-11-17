@@ -6,12 +6,13 @@ import { pct, sessionFrameStats, worstLeaves } from '../domain/scoring';
 import { average, dashboard, sessionAverage } from '../domain/stats';
 import { typeLabel, type AppData, type CoachAdvice, type CoachReport, type Session } from '../domain/types';
 import { coldStart, type ColdStart } from '../domain/coldstart';
+import { times } from '../util/format';
 import { coachTips, stdDev } from './rules';
 
 const coldLine = (label: string, c: ColdStart) =>
   c.n === 0
     ? `${label}: nincs kétjátékos alkalom.`
-    : `${label} az 1. játék átlaga ${c.firstAvg!.toFixed(1)}, a 2. játéké ${c.secondAvg!.toFixed(1)}; ${c.n} alkalomból ${c.secondBetter}-szor volt jobb a 2.${c.enough ? '' : ' (kevés adat)'}`;
+    : `${label} az 1. játék átlaga ${c.firstAvg!.toFixed(1)}, a 2. játéké ${c.secondAvg!.toFixed(1)}; ${c.n} alkalomból ${times(c.secondBetter)} volt jobb a 2.${c.enough ? '' : ' (kevés adat)'}`;
 
 export const COACH_MODEL = 'claude-opus-5-5';
 /** Claude Opus 5.5 ára (USD / millió token): bemenet, kimenet. */

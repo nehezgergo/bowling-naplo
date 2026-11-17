@@ -515,3 +515,11 @@ code { font-size: 0.85em; background: var(--surface-2); padding: 2px 6px; border
 .bench-list li:first-child { border-top: 0; }
 .bench-btns { display: flex; align-items: center; flex: none; }
 .bench-btns .btn { min-height: 40px; padding: 0 10px; }
+
+/* Egy teendő */
+.one-action { border: 2px solid var(--accent); background: var(--accent-soft); }
+.one-action-text { font-size: 1.05rem; font-weight: 700; margin: 6px 0 8px; }
+.one-action-src { font-size: 0.8rem; color: var(--muted); }
+.saved-action { text-align: left; margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); }
+.saved-action-text { font-weight: 700; margin-top: 2px; }
+.saved-action-src { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }

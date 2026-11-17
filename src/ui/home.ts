@@ -1,5 +1,6 @@
 import { coachTips, nextFocus, sessionFeedback, type CoachTip } from '../coach/rules';
 import { avgFirstBall, leaveTable, sessionFrameStats, type FrameStats, type LeaveRow } from '../domain/scoring';
+import { oneAction } from '../coach/oneAction';
 import { coldStart } from '../domain/coldstart';
 import { dashboard, goalProgress, type GroupAvg } from '../domain/stats';
 import { typeLabel, type CoachReport, type SessionType } from '../domain/types';
@@ -114,6 +115,16 @@ function frameCard(fs: FrameStats, corner: number): string {
   </section>`;
 }
 
+function oneActionCard(): string {
+  const { sessions, settings } = getData();
+  const a = oneAction(sessions, settings.profile);
+  return `<section class="card one-action" aria-label="Egy teendő">
+    <div class="focus-label">Egy teendő a következő edzésre</div>
+    <p class="one-action-text">${esc(a.text)}</p>
+    <div class="one-action-src">${esc(a.source)}${a.lossPerGame !== null ? ` · becsült veszteség kb. ${fmtAvg(a.lossPerGame)} pin/játék` : ''}</div>
+  </section>`;
+}
+
 function coldCard(): string {
   const { sessions } = getData();
   const comp = coldStart(sessions, 'verseny');
@@ -174,6 +185,7 @@ export function renderHome(root: HTMLElement): void {
           </section>`
         : ''
     }
+    ${oneActionCard()}
     ${backupBanner()}
     <section class="hero card">
       <div class="hero-label">Összátlag</div>

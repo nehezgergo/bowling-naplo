@@ -12,6 +12,23 @@ export const fmtAvg = (n: number | null | undefined): string =>
 export const fmtRate = (made: number, n: number, min = 10): string =>
   n === 0 ? '–' : n < min ? `${made}/${n}` : `${Math.round((made / n) * 100)}% (${made}/${n})`;
 
+/**
+ * Szám + „-szor/-szer/-ször” rag a magyar hangrend szerint (a szám kiejtett utolsó tagjához):
+ * 1-szer, 2-szer, 3-szor, 4-szer, 5-ször, 6-szor, 7-szer, 8-szor, 9-szer, 10-szer, 20-szor, 100-szor, 1000-szer.
+ */
+export function times(n: number): string {
+  const v = Math.abs(Math.trunc(n));
+  const lastDigit = v % 10;
+  let suffix: 'szor' | 'szer' | 'ször';
+  if (v === 0) suffix = 'szor'; // nulla
+  else if (lastDigit !== 0) suffix = ({ 1: 'szer', 2: 'szer', 3: 'szor', 4: 'szer', 5: 'ször', 6: 'szor', 7: 'szer', 8: 'szor', 9: 'szer' } as const)[lastDigit as 1];
+  else if (v % 1_000_000 === 0) suffix = 'szor'; // millió
+  else if (v % 1000 === 0) suffix = 'szer'; // ezer
+  else if (v % 100 === 0) suffix = 'szor'; // száz
+  else suffix = ({ 1: 'szer', 2: 'szor', 3: 'szor', 4: 'szer', 5: 'szer', 6: 'szor', 7: 'szer', 8: 'szor', 9: 'szer' } as const)[((v % 100) / 10) as 1]; // tíz, húsz, harminc…
+  return `${n}-${suffix}`;
+}
+
 export const fmtInt = (n: number | null | undefined): string => (n === null || n === undefined ? '–' : String(n));
 
 export const fmtSigned = (n: number | null | undefined): string => {
