@@ -7,9 +7,10 @@ import { typeLabel, type CoachReport, type SessionType } from '../domain/types';
 import { getData, updateSettings } from '../state';
 import { backupReminder, snoozeUntil } from '../storage/backup';
 import { exportJson } from '../storage/io';
-import { esc, fmtAvg, fmtInt, fmtRate, fmtSigned, todayIso } from '../util/format';
+import { esc, fmtAvg, fmtDate, fmtInt, fmtRate, fmtSigned, todayIso } from '../util/format';
 import { mountScoreChart } from './chart';
 import { saveFile } from './files';
+import { discardDraft, pendingDraft } from './newSession';
 import { coldRow, coldTable } from './prepPage';
 import { takeJustSaved, toast } from './shell';
 
@@ -115,6 +116,19 @@ function frameCard(fs: FrameStats, corner: number): string {
   </section>`;
 }
 
+function pendingBanner(): string {
+  const p = pendingDraft();
+  if (!p) return '';
+  const stepLabel = p.step === 3 ? 'összegzésnél' : p.step === 2 ? 'játékoknál' : 'körülményeknél';
+  return `<section class="card pending-banner" id="pendingBanner">
+    <div><b>Folyamatban lévő alkalom</b><div class="muted small">${esc(fmtDate(p.date))} · ${esc(p.type)} · ${p.games} játék · a ${stepLabel} tartasz</div></div>
+    <div class="backup-actions">
+      <a class="btn btn-primary" href="#/uj">Folytatás</a>
+      <button type="button" class="btn btn-ghost" id="pendingDiscard">Elvetés</button>
+    </div>
+  </section>`;
+}
+
 function oneActionCard(): string {
   const { sessions, settings } = getData();
   const a = oneAction(sessions, settings.profile);
@@ -185,6 +199,7 @@ export function renderHome(root: HTMLElement): void {
           </section>`
         : ''
     }
+    ${pendingBanner()}
     ${oneActionCard()}
     ${backupBanner()}
     <section class="hero card">
@@ -231,6 +246,11 @@ export function renderHome(root: HTMLElement): void {
 
   mountScoreChart(root.querySelector('#chartCard')!, d.games, { goal: settings.goalAverage });
   root.querySelector('#fbClose')?.addEventListener('click', () => root.querySelector('#feedback')?.remove());
+  root.querySelector('#pendingDiscard')?.addEventListener('click', () => {
+    if (!confirm('Elveted a félbehagyott alkalmat? A beírt játékok elvesznek.')) return;
+    discardDraft();
+    root.querySelector('#pendingBanner')?.remove();
+  });
   root.querySelector('#backupNow')?.addEventListener('click', async () => {
     if (await saveFile(`bowling-naplo-${todayIso()}.json`, exportJson(getData()), 'application/json')) {
       await updateSettings({ lastExportAt: new Date().toISOString(), backupSnoozeUntil: undefined });

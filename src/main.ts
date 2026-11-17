@@ -6,7 +6,7 @@ import { renderCoachPage } from './ui/coachPage';
 import { renderHome } from './ui/home';
 import { renderPrepPage } from './ui/prepPage';
 import { renderLog } from './ui/log';
-import { renderNewSession } from './ui/newSession';
+import { leaveSessionEditor, renderNewSession } from './ui/newSession';
 import { renderSettings } from './ui/settings';
 import { applyTheme } from './ui/shell';
 
@@ -23,6 +23,7 @@ function route() {
   const raw = location.hash.replace(/^#\/?/, '');
   const [path, query = ''] = raw.split('?');
   const render = routes[path] ?? renderHome;
+  if (path !== 'uj') leaveSessionEditor();
   const root = document.getElementById('view')!;
   root.scrollTop = 0;
   window.scrollTo(0, 0);

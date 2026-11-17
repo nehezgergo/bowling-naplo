@@ -523,3 +523,35 @@ code { font-size: 0.85em; background: var(--surface-2); padding: 2px 6px; border
 .saved-action { text-align: left; margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); }
 .saved-action-text { font-weight: 700; margin-top: 2px; }
 .saved-action-src { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+/* Új alkalom: lépések */
+.stepper { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: -4px 0 14px; }
+.step {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; min-height: 52px;
+  border: 0; border-radius: 12px; background: transparent; color: var(--muted); font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+}
+.step-n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); font-size: 0.85rem; }
+.step.on { color: var(--accent); }
+.step.on .step-n { background: var(--accent); color: var(--accent-text); }
+.step.done .step-n { background: var(--good); color: #fff; }
+.cond-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; margin-bottom: 8px; border-radius: 12px; background: var(--surface-2); font-weight: 600; font-size: 0.9rem; }
+.cond-line .btn { min-height: 40px; padding: 0 10px; flex: none; }
+.game-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px 12px; margin-bottom: 10px; }
+.game-card.has-frames { border-color: var(--accent); }
+.gc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.gc-tools { display: flex; align-items: center; gap: 4px; }
+.gc-body { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: end; }
+.gc-label { display: block; font-size: 0.78rem; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+.gc-or { color: var(--muted); font-size: 0.8rem; padding-bottom: 18px; }
+.gc-frames { flex-direction: column; min-height: 56px; min-width: 92px; font-size: 1.2rem; line-height: 1.1; padding: 4px 10px; }
+.gc-frames small { font-size: 0.72rem; }
+.gc-frames.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.gc-err { color: var(--bad); font-size: 0.8rem; margin-top: 4px; }
+.add-game { width: 100%; border-style: dashed; }
+.sum-card { text-align: center; }
+.sum-scores { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 10px 0; }
+.sum-scores .score { font-size: 1.2rem; min-width: 56px; }
+.sum-line { margin-bottom: 4px; }
+.step-h { font-size: 1.05rem; margin: 18px 0 8px; }
+.del-btn { width: 100%; margin: 8px 0; }
+.pending-banner { border: 2px solid var(--accent); display: grid; gap: 10px; }
