@@ -660,7 +660,6 @@ input:focus, select:focus, textarea:focus {
 .focus, .report-next, .saved-action { background: var(--grad-soft); }
 .focus-label { color: var(--accent); letter-spacing: 0.08em; }
 .import-box { background: var(--grad-soft); border-color: var(--accent); }
-.claude-link { background: var(--grad-soft); }
 
 /* Lépésjelző */
 .step.on .step-n { background: var(--grad); color: #fff; box-shadow: var(--glow); }
@@ -693,4 +692,44 @@ input:focus, select:focus, textarea:focus {
 
 @media (prefers-reduced-motion: reduce) {
   .btn, .chip, input, select, textarea, .nav a { transition: none; }
+}
+
+/* ═══════════ Egyértelmű gombok és azonnali visszajelzés ═══════════ */
+/* Koppintható sor (pl. Claude-edző, Verseny előtt): keretes, színezett gomb,
+   kiemelt címmel és nyíllal. Az információs dobozok (fókusz, összegzés) keret nélküliek. */
+.claude-link {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: var(--shadow);
+  min-height: 56px;
+}
+.claude-link b { color: var(--accent); }
+.claude-link > span:last-child {
+  display: grid; place-items: center; flex: none;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--grad); color: #fff; font-size: 1.25rem; font-weight: 800; line-height: 1;
+  box-shadow: var(--glow);
+}
+
+/* Koppintás: nincs késleltetés, és a lenyomás azonnal látszik. */
+a, button, .chip, .pin, summary, label[for] { touch-action: manipulation; }
+.claude-link:active, .log-item:active, .chip:active, .game-ball:active, .step:active, .pin:active:not(:disabled), .fe-cell:active, .icon-btn:active {
+  transition: none;
+  transform: scale(0.98);
+  filter: brightness(0.95);
+}
+.claude-link:active { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+.btn:active:not(:disabled) { transition: none; filter: brightness(0.94); }
+.nav a:active { transition: none; opacity: 0.7; }
+.log-item { transition: box-shadow 0.15s ease; }
+
+/* Betűköz a mérethez: nagy szöveg szorosabb, apró címke kicsit lazább. */
+.tile-label, .hint, .small, .tile-sub, .focus-label { letter-spacing: 0.02em; }
+.tile-value, .chance-big, .live-need, .fe-final-score { letter-spacing: -0.02em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .claude-link:active, .log-item:active, .chip:active, .game-ball:active, .step:active, .pin:active, .fe-cell:active, .icon-btn:active, .btn:active { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .nav, .fe-top, .fe-bottom { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
