@@ -127,7 +127,8 @@ function sessionLine(s: Session): string {
   const c = s.coach;
   if (c) {
     const extra: string[] = [];
-    if (c.fatigue) extra.push(`fáradtság ${c.fatigue}/5`);
+    // Ugyanúgy, ahogy a játékos látja: 1 = kimerült … 5 = friss.
+    if (c.fatigue) extra.push(`frissesség ${6 - c.fatigue}/5 (5 = friss)`);
     if (c.concentration) extra.push(`koncentráció ${c.concentration}/5`);
     if (c.selfRating) extra.push(`önértékelés ${c.selfRating}/5`);
     if (c.oil) extra.push(`olajozás: ${OIL[c.oil]}`);

@@ -323,7 +323,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
         { id: 'reszben', label: 'Részben' },
         { id: 'nem', label: 'Nem' },
       ], c.focusResult)}</div>` : ''}
-      ${scale('coach.fatigue', 'Fáradtság', c.fatigue, 'friss', 'kimerült')}
+      ${scale('coach.freshness', 'Fáradtság', c.fatigue ? 6 - c.fatigue : undefined, 'kimerült', 'friss')}
       ${scale('coach.concentration', 'Koncentráció', c.concentration, 'szétszórt', 'fókuszált')}
       ${scale('coach.selfRating', 'Önértékelés', c.selfRating, 'gyenge', 'kiváló')}
       ${textField('coach.wentWell', 'Mi ment jól?', c.wentWell, '', true)}
@@ -491,6 +491,11 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
         if (field === 'type') draft.type = value as SessionType;
         else if (field === 'ball') draft.ball = v ?? '';
         else if (field.startsWith('coach.')) {
+          // A fáradtság kijelzése fordított (1 = kimerült … 5 = friss), a tárolt érték marad (1 = friss … 5 = kimerült).
+          if (field === 'coach.freshness') {
+            draft.coach.fatigue = v === undefined ? undefined : ((6 - Number(v)) as SessionCoach['fatigue']);
+            return persist();
+          }
           const key = field.slice(6) as keyof SessionCoach;
           const isScale = key === 'fatigue' || key === 'concentration' || key === 'selfRating';
           (draft.coach as Record<string, unknown>)[key] = v === undefined ? undefined : isScale ? Number(v) : v;

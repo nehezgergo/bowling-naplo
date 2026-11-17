@@ -33,7 +33,8 @@ describe('az edzőnek küldött üzenet', () => {
   });
   it('tartalmazza az alkalmak megjegyzéseit és a fókuszt', () => {
     expect(msg).toContain('Őszi liga');
-    expect(msg).toContain('fáradtság 4/5');
+    // tárolt fáradtság 4 → a játékos skáláján frissesség 2
+    expect(msg).toContain('frissesség 2/5 (5 = friss)');
     expect(msg).toContain('fókusz: „spare-ek” – nem sikerült');
     expect(msg).toContain('a 7-es bábu');
   });
