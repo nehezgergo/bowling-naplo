@@ -585,7 +585,8 @@ body {
   background: var(--page-glow), var(--bg);
   background-attachment: fixed;
   font-feature-settings: 'tnum' 0;
-  letter-spacing: 0.005em;
+  letter-spacing: 0;
+  line-height: 1.5;
 }
 ::selection { background: var(--accent); color: #fff; }
 .page-title { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
@@ -714,12 +715,12 @@ input:focus, select:focus, textarea:focus {
 /* Koppintás: nincs késleltetés, és a lenyomás azonnal látszik. */
 a, button, .chip, .pin, summary, label[for] { touch-action: manipulation; }
 .claude-link:active, .log-item:active, .chip:active, .game-ball:active, .step:active, .pin:active:not(:disabled), .fe-cell:active, .icon-btn:active {
-  transition: none;
-  transform: scale(0.98);
+  transform: scale(0.97);
   filter: brightness(0.95);
+  transition: transform 100ms ease-out, filter 100ms ease-out;
 }
 .claude-link:active { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
-.btn:active:not(:disabled) { transition: none; filter: brightness(0.94); }
+.btn:active:not(:disabled) { transform: scale(0.97); filter: brightness(0.94); transition: transform 100ms ease-out, filter 100ms ease-out; }
 .nav a:active { transition: none; opacity: 0.7; }
 .log-item { transition: box-shadow 0.15s ease; }
 
@@ -732,4 +733,54 @@ a, button, .chip, .pin, summary, label[for] { touch-action: manipulation; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .nav, .fe-top, .fe-bottom { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
+/* ═══════════ Apple-design skill alapján (.claude/skills/apple-design) ═══════════ */
+/* Anyagok: áttetsző, homályosított navigáció; a felső él világos, mint a fényt elkapó anyag. */
+:root { --nav-bg: rgb(255 255 255 / 0.6); --nav-edge: rgb(255 255 255 / 0.4); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --nav-bg: rgb(22 19 49 / 0.6); --nav-edge: rgb(255 255 255 / 0.08); } }
+:root[data-theme='dark'] { --nav-bg: rgb(22 19 49 / 0.6); --nav-edge: rgb(255 255 255 / 0.08); }
+.nav {
+  -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid var(--nav-edge);
+}
+
+/* Lapok (sheet): rugós érkezés alulról, ugyanazon az úton távozik. Nem gesztusvezérelt,
+   ezért CSS is elég; csillapítás ~0.8 / válasz ~0.3 s közelítése. */
+.fe-overlay { animation: sheet-in 360ms cubic-bezier(0.22, 1.12, 0.36, 1) both; }
+.fe-overlay.closing { animation: sheet-out 220ms cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none; }
+@keyframes sheet-in { from { transform: translateY(100%); } }
+@keyframes sheet-out { to { transform: translateY(100%); } }
+
+/* Visszaigazoló kártya: „anyagként” érkezik (méret + elmosás együtt), túllendülés nélkül (csillapítás 1.0). */
+.saved-sheet { animation: scrim-in 200ms ease-out both; }
+.saved-card { animation: materialize 380ms cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.saved-sheet.out .saved-card { transform: scale(0.96); filter: blur(4px); transition: transform 200ms ease-in, filter 200ms ease-in; }
+@keyframes scrim-in { from { opacity: 0; } }
+@keyframes materialize { from { transform: scale(0.92); filter: blur(8px); opacity: 0; } }
+
+/* Téma-váltás: ne ugorjon a fényerő. */
+body, .card, .tile, .nav, details.more, .game-card { transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease; }
+
+/* Nagy kijelző-szövegek: szoros sorköz és negatív betűköz. */
+.hero-value, .chance-big, .live-need, .fe-final-score { line-height: 1.05; font-optical-sizing: auto; }
+
+/* Csökkentett mozgás: rugók és csúszás helyett rövid áttűnés, túllendülés nélkül. */
+@media (prefers-reduced-motion: reduce) {
+  .fe-overlay { animation: fade-in 200ms ease both; }
+  .fe-overlay.closing { animation: fade-out 200ms ease both; }
+  .saved-card { animation: fade-in 200ms ease both; }
+  .saved-sheet.out .saved-card { transform: none; filter: none; }
+  body, .card, .tile, .nav, details.more, .game-card { transition: none; }
+}
+@keyframes fade-out { to { opacity: 0; } }
+
+/* Nagyobb kontraszt kérése: tömör háttér, határozott keret, átmenetek helyett egyszínű kiemelés. */
+@media (prefers-contrast: more) {
+  .nav, .fe-top, .fe-bottom { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; border-top: 2px solid var(--text); }
+  .card, .tile, details.more, .game-card, .claude-link, input, select, textarea, .btn, .chip { border: 2px solid var(--text); }
+  .btn-primary, .chip.on, .bar-fill, .step.on .step-n, .saved-check, .nav-new svg { background: var(--accent); box-shadow: none; }
+  .hero-value { background: none; color: var(--text); }
+  .hero::before { display: none; }
+  .muted, .hint { color: var(--text); }
 }

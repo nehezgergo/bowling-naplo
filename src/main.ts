@@ -45,6 +45,8 @@ async function start() {
   route();
   requestPersistence();
   registerSW({ immediate: true });
+  // iOS Safarin a :active (lenyomás-visszajelzés) csak akkor működik, ha van touchstart-figyelő.
+  document.addEventListener('touchstart', () => {}, { passive: true });
 }
 
 start();

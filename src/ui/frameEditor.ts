@@ -54,7 +54,7 @@ const toFrame = (f: EFrame): Frame => {
 
 export function openFrameEditor(opts: FrameEditorOptions): void {
   // Dupla koppintásra se nyíljon meg kétszer.
-  if (document.querySelector('.fe-overlay')) return;
+  if (document.querySelector('.fe-overlay:not(.closing)')) return;
   const hadFrames = !!opts.frames?.length;
   const frames: EFrame[] = Array.from({ length: 10 }, (_, i) => {
     const f = opts.frames?.[i];
@@ -83,7 +83,9 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
 
   function close(result: Frame[] | null | undefined, fromPop = false) {
     window.removeEventListener('popstate', onPop);
-    overlay.remove();
+    // Ugyanazon az úton távozik, amin érkezett (lefelé csúszik), aztán eltűnik.
+    overlay.classList.add('closing');
+    setTimeout(() => overlay.remove(), 220);
     document.body.style.overflow = prevOverflow;
     if (!fromPop) history.back();
     if (result !== undefined) opts.onDone(result);
