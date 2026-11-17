@@ -1,4 +1,6 @@
 import { sessionFrameStats } from '../domain/scoring';
+import { noiseFor } from '../domain/simulation';
+import { noiseBadge } from './fieldView';
 import { average, NO_BALL, sessionAverage } from '../domain/stats';
 import { getSessionTypes, typeKind, typeLabel, type Session } from '../domain/types';
 import { getData } from '../state';
@@ -102,6 +104,7 @@ export function renderLog(root: HTMLElement): void {
                 <span class="badge k-${typeKind(s.type)}">${esc(typeLabel(s.type))}</span>
                 ${s.ball ? `<span class="badge">${esc(s.ball)}</span>` : ''}
                 ${s.eventName ? `<span class="muted">${esc(s.eventName)}</span>` : ''}
+                ${typeKind(s.type) === 'verseny' && s.games.length >= 2 ? noiseBadge(noiseFor(sessions, s.date, scores.reduce((a, b) => a + b, 0), scores.length, s.id)) : ''}
               </div>
               ${dirLine(s)}
               <div class="log-scores">${scores

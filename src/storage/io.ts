@@ -9,6 +9,7 @@ import {
   typeLabel,
   type AppData,
   type CoachReport,
+  type FieldBenchmark,
   type Competition,
   type Frame,
   type Game,
@@ -19,7 +20,8 @@ import {
   type Settings,
   type TypeKind,
 } from '../domain/types';
-import { normalize, validTypes } from './db';
+import { normalize, validBenchmarks, validTypes } from './db';
+import { isBenchmarkCsv, parseBenchmarksCsv } from './fieldIo';
 
 const APP_ID = 'bowling-naplo';
 
@@ -27,7 +29,7 @@ const APP_ID = 'bowling-naplo';
 
 export function exportJson(data: AppData, now = new Date()): string {
   return JSON.stringify(
-    { app: APP_ID, schemaVersion: data.schemaVersion, exportedAt: now.toISOString(), sessions: data.sessions, settings: data.settings, coachReports: data.coachReports, appliedSeeds: data.appliedSeeds ?? [] },
+    { app: APP_ID, schemaVersion: data.schemaVersion, exportedAt: now.toISOString(), sessions: data.sessions, settings: data.settings, coachReports: data.coachReports, appliedSeeds: data.appliedSeeds ?? [], benchmarks: data.benchmarks ?? [] },
     null,
     2,
   );
@@ -40,6 +42,8 @@ export interface ImportResult {
   coachReports: CoachReport[];
   /** Az importált alkalmakban szereplő, a jelenlegi listában még nem létező típusok. */
   newTypes: SessionTypeDef[];
+  /** Mezőny-határok (JSON-ból, vagy mezőny-határ CSV-ből). */
+  benchmarks: FieldBenchmark[];
   warnings: string[];
   format: 'json' | 'csv';
 }
@@ -130,7 +134,7 @@ export function parseJsonImport(text: string, uid: () => string): ImportResult {
   } catch {
     throw new Error('A fájl nem érvényes JSON.');
   }
-  const obj = raw as { sessions?: unknown; settings?: unknown; coachReports?: unknown };
+  const obj = raw as { sessions?: unknown; settings?: unknown; coachReports?: unknown; benchmarks?: unknown };
   if (!obj || typeof obj !== 'object' || !Array.isArray(obj.sessions)) throw new Error('A JSON-ban nincs „sessions” lista. Biztos, hogy ebből az appból mentetted?');
   const warnings: string[] = [];
   const sessions = obj.sessions.map((s, i) => cleanSession(s, i, warnings, uid)).filter((s): s is Session => s !== null);
@@ -144,7 +148,7 @@ export function parseJsonImport(text: string, uid: () => string): ImportResult {
       known.add(s.type);
       newTypes.push(fileTypes.find((t) => t.id === s.type) ?? { id: s.type, label: typeLabel(s.type), kind: guessKind(s.type) });
     }
-  return { sessions, settings, coachReports, newTypes, warnings, format: 'json' };
+  return { sessions, settings, coachReports, newTypes, benchmarks: validBenchmarks(obj.benchmarks), warnings, format: 'json' };
 }
 
 // ───────────────────────── CSV ─────────────────────────
@@ -445,7 +449,7 @@ export function parseCsvImport(text: string, uid: () => string): ImportResult {
     s.games.sort((a, b) => a.index - b.index).forEach((g, i) => (g.index = i + 1));
     return true;
   });
-  return { sessions, coachReports: [], newTypes, warnings, format: 'csv' };
+  return { sessions, coachReports: [], newTypes, benchmarks: [], warnings, format: 'csv' };
 }
 
 function compact<T extends object>(o: T): T | undefined {
@@ -463,6 +467,10 @@ export function withNewTypes(settings: Settings, newTypes: SessionTypeDef[]): Se
 export function parseImport(fileName: string, text: string, uid: () => string): ImportResult {
   const trimmed = text.replace(/^﻿/, '').trimStart();
   if (/\.json$/i.test(fileName) || trimmed.startsWith('{')) return parseJsonImport(text, uid);
+  if (isBenchmarkCsv(text)) {
+    const { benchmarks, warnings } = parseBenchmarksCsv(text, uid);
+    return { sessions: [], coachReports: [], newTypes: [], benchmarks, warnings, format: 'csv' };
+  }
   return parseCsvImport(text, uid);
 }
 

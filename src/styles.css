@@ -485,3 +485,33 @@ code { font-size: 0.85em; background: var(--surface-2); padding: 2px 6px; border
 .dir-bar .k-zseb { background: var(--series-3); }
 .dir-bar .k-bal, .dir-bar .k-jobb { background: var(--series-2); }
 .log-dir { font-size: 0.8rem; color: var(--muted); margin: -4px 0 6px; }
+
+/* Mezőnymodell */
+.sim-controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 4px; }
+.sim-controls label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.sim-controls input:not([type='checkbox']) { width: 72px; min-height: 44px; text-align: center; }
+.sim-controls select { width: auto; min-height: 44px; }
+.chance-main { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: center; margin: 12px 0; }
+.chance-big { font-size: 2.2rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.band { position: relative; height: 34px; background: var(--surface-2); border-radius: 10px; margin: 18px 0 4px; }
+.band-range { position: absolute; top: 8px; bottom: 8px; background: var(--accent-soft); border: 2px solid var(--accent); border-radius: 8px; }
+.band-mid { position: absolute; top: 4px; bottom: 4px; width: 3px; margin-left: -1px; background: var(--accent); border-radius: 2px; }
+.band-cut { position: absolute; top: -6px; bottom: -6px; width: 0; border-left: 2px dashed var(--bad); }
+.band-cut span { position: absolute; top: -18px; left: -14px; font-size: 0.75rem; font-weight: 800; color: var(--bad); }
+.band-legend { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; }
+.live-row { display: flex; align-items: center; gap: 12px; }
+.live-row label { font-weight: 700; }
+.live-row input { max-width: 140px; }
+.live-out { margin-top: 10px; min-height: 1em; }
+.live-need { font-size: 3rem; font-weight: 800; line-height: 1; color: var(--accent); }
+.live-need.ok { color: var(--good); font-size: 2rem; }
+.live-out p { margin: 6px 0 0; }
+.field-tbl td { font-size: 0.88rem; }
+.noise { display: inline-block; margin-top: 2px; font-size: 0.68rem; font-weight: 800; padding: 1px 6px; border-radius: 99px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.noise-kiugro-jo { background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good); }
+.noise-kiugro-gyenge { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+.bench-list { list-style: none; padding: 0; margin: 0 0 10px; }
+.bench-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
+.bench-list li:first-child { border-top: 0; }
+.bench-btns { display: flex; align-items: center; flex: none; }
+.bench-btns .btn { min-height: 40px; padding: 0 10px; }

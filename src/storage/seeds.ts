@@ -2,7 +2,7 @@
  * Kezdő adatok: egyszer kerülnek be (az azonosítójuk az `appliedSeeds` listába íródik),
  * duplikáció nélkül. Ha egy kezdő alkalmat törölsz, nem jön vissza.
  */
-import { DEFAULT_SESSION_TYPES, type AppData, type Session } from '../domain/types';
+import { DEFAULT_SESSION_TYPES, type AppData, type FieldBenchmark, type Session } from '../domain/types';
 import { fold, withNewTypes } from './io';
 
 export const COLDSTART_SEED = 'versenyek-2025-2026-v1';
@@ -78,19 +78,52 @@ export interface SeedResult {
 
 /** A kezdő adatok betöltése, ha még nem történt meg. Tiszta függvény: új objektumot ad vissza. */
 export function applySeeds(data: AppData, now = new Date().toISOString()): SeedResult {
-  const applied = data.appliedSeeds ?? [];
-  if (applied.includes(COLDSTART_SEED)) return { data, added: 0, changed: false };
-  const fresh = ROWS.filter((r) => !alreadyThere(r, data.sessions)).map((r) => toSession(r, now));
-  // A típusok (Kupa, Hivatal kupa) legyenek a listában, ha közben törölted őket.
-  const needed = DEFAULT_SESSION_TYPES.filter((t) => fresh.some((s) => s.type === t.id));
-  return {
-    data: {
-      ...data,
-      sessions: [...data.sessions, ...fresh],
-      settings: withNewTypes(data.settings, needed),
-      appliedSeeds: [...applied, COLDSTART_SEED],
-    },
-    added: fresh.length,
-    changed: true,
-  };
+  let out = data;
+  let added = 0;
+  let changed = false;
+  const applied = () => out.appliedSeeds ?? [];
+
+  if (!applied().includes(COLDSTART_SEED)) {
+    const fresh = ROWS.filter((r) => !alreadyThere(r, out.sessions)).map((r) => toSession(r, now));
+    // A típusok (Kupa, Hivatal kupa) legyenek a listában, ha közben törölted őket.
+    const needed = DEFAULT_SESSION_TYPES.filter((t) => fresh.some((x) => x.type === t.id));
+    out = { ...out, sessions: [...out.sessions, ...fresh], settings: withNewTypes(out.settings, needed), appliedSeeds: [...applied(), COLDSTART_SEED] };
+    added += fresh.length;
+    changed = true;
+  }
+
+  if (!applied().includes(FIELD_SEED)) {
+    const existing = out.benchmarks ?? [];
+    const fresh = FIELD_ROWS.filter((b) => !existing.some((e) => e.id === b.id || (e.category === b.category && fold(e.event) === fold(b.event))));
+    out = { ...out, benchmarks: [...existing, ...fresh], appliedSeeds: [...applied(), FIELD_SEED] };
+    changed = true;
+  }
+
+  return { data: out, added, changed };
 }
+
+// ───────────────── Hivatal Kupa mezőny-határok (2 játék összege a selejtezőben) ─────────────────
+
+export const FIELD_SEED = 'mezony-hivatal-kupa-v1';
+
+const ind = (id: string, event: string, date: string, entrants: number, c: [number, number, number, number], own: [number, number]): FieldBenchmark => ({
+  id, series: 'Hivatal Kupa', event, date, category: 'egyeni', entrants, qualifyRank: 12,
+  cutoffs: [{ rank: 1, total: c[0] }, { rank: 3, total: c[1] }, { rank: 12, total: c[2] }, { rank: 13, total: c[3] }],
+  own: { total: own[0], rank: own[1] },
+});
+const team = (id: string, event: string, date: string, entrants: number, c: [number, number, number, number], own: [number, number]): FieldBenchmark => ({
+  id, series: 'Hivatal Kupa', event, date, category: 'csapat', entrants, qualifyRank: 16,
+  cutoffs: [{ rank: 8, total: c[0] }, { rank: 12, total: c[1] }, { rank: 16, total: c[2] }, { rank: 17, total: c[3] }],
+  own: { total: own[0], rank: own[1] },
+});
+
+export const FIELD_ROWS: FieldBenchmark[] = [
+  ind('hk-xxii-egyeni', 'XXII (2025 tavasz)', '2025-04-15', 58, [380, 326, 281, 279], [234, 33]),
+  ind('hk-xxiii-egyeni', 'XXIII (2025 ősz)', '2025-11-15', 81, [379, 345, 273, 264], [254, 18]),
+  ind('hk-xxiv-egyeni', 'XXIV (2026 tavasz)', '2026-04-15', 84, [366, 325, 267, 264], [267, 12]),
+  ind('hk-xxv-egyeni', 'XXV (2026 ősz)', '2026-11-15', 93, [409, 332, 297, 292], [324, 4]),
+  team('hk-xxii-csapat', 'XXII (2025 tavasz)', '2025-04-15', 24, [1258, 1095, 1003, 989], [1091, 13]),
+  team('hk-xxiii-csapat', 'XXIII (2025 ősz)', '2025-11-15', 33, [1250, 1073, 1018, 1016], [1059, 14]),
+  team('hk-xxiv-csapat', 'XXIV (2026 tavasz)', '2026-04-15', 31, [1209, 1018, 1000, 996], [1059, 11]),
+  team('hk-xxv-csapat', 'XXV (2026 ősz)', '2026-11-15', 35, [1321, 1128, 1023, 995], [1212, 10]),
+];

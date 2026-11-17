@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA, emptyData, defaultSettings, type AppData, type SessionTypeDef } from '../domain/types';
+import { CURRENT_SCHEMA, emptyData, defaultSettings, type AppData, type Cutoff, type FieldBenchmark, type SessionTypeDef } from '../domain/types';
 
 const DB_NAME = 'bowling-naplo';
 const STORE = 'kv';
@@ -35,6 +35,16 @@ async function idbSet(value: AppData): Promise<void> {
 
 const KINDS = new Set(['edzes', 'verseny', 'egyeb']);
 
+/** Mezőny-határok ellenőrzése: csak a hiánytalan elemek maradnak. */
+export function validBenchmarks(raw: unknown): FieldBenchmark[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((b): b is FieldBenchmark =>
+    !!b && typeof b.id === 'string' && typeof b.series === 'string' && typeof b.event === 'string' &&
+    (b.category === 'egyeni' || b.category === 'csapat') && Number.isInteger(b.qualifyRank) && b.qualifyRank > 0 &&
+    Array.isArray(b.cutoffs) && b.cutoffs.every((c: Cutoff) => Number.isInteger(c?.rank) && c.rank > 0 && Number.isFinite(c?.total)),
+  ).map((b) => ({ ...b, cutoffs: [...b.cutoffs].sort((x, y) => x.rank - y.rank) }));
+}
+
 /** A típuslista ellenőrzése: csak a hiánytalan elemek maradnak; üres lista helyett null. */
 export function validTypes(raw: unknown): SessionTypeDef[] | null {
   if (!Array.isArray(raw)) return null;
@@ -70,6 +80,7 @@ export function normalize(raw: unknown): AppData {
   return {
     schemaVersion: CURRENT_SCHEMA,
     appliedSeeds: Array.isArray(r.appliedSeeds) ? r.appliedSeeds.filter((x): x is string => typeof x === 'string') : [],
+    benchmarks: validBenchmarks(r.benchmarks),
     sessions: Array.isArray(r.sessions) ? r.sessions : [],
     settings: {
       ...defaultSettings(),

@@ -1,5 +1,6 @@
 import { bestWarmup, coldStart, MIN_SAMPLE, warmupBuckets, warmupCount, type ColdStart } from '../domain/coldstart';
 import { getData } from '../state';
+import { fieldTables, mountChance, mountLive } from './fieldView';
 import { esc, fmtAvg, fmtSigned } from '../util/format';
 
 /** Egy sor a hidegindítás-táblához; kis mintánál „kevés adat” jelzéssel. */
@@ -46,6 +47,9 @@ export function renderPrepPage(root: HTMLElement): void {
   root.innerHTML = `
     <h1 class="page-title">Verseny előtt</h1>
 
+    <section class="card" id="chanceCard"></section>
+    <section class="card" id="liveCard"></section>
+
     <section class="card">
       <h2>Hidegindítás</h2>
       <p>${verdict}</p>
@@ -75,5 +79,11 @@ export function renderPrepPage(root: HTMLElement): void {
           )
           .join('')}</tbody>
       </table>
-    </section>`;
+    </section>
+
+    ${fieldTables()}
+    <p class="muted small center"><a href="#/beallitasok">Mezőny-határok szerkesztése és importja a Beállításokban</a></p>`;
+
+  mountChance(root.querySelector('#chanceCard')!);
+  mountLive(root.querySelector('#liveCard')!);
 }

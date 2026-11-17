@@ -1,5 +1,5 @@
 import { cleanKey, getApiKey, maskKey, setApiKey, verifyApiKey } from '../coach/claude';
-import { CURRENT_SCHEMA, KIND_LABEL, type Profile, type SessionTypeDef, type Settings, type TypeKind } from '../domain/types';
+import { CURRENT_SCHEMA, KIND_LABEL, type FieldBenchmark, type Profile, type SessionTypeDef, type Settings, type TypeKind } from '../domain/types';
 import { getData, replaceAll, updateSettings } from '../state';
 import {
   csvTemplate,
@@ -15,6 +15,7 @@ import {
   type ImportResult,
 } from '../storage/io';
 import { esc, fmtDate, todayIso, uid } from '../util/format';
+import { exportBenchmarksCsv, formatCutoffs, mergeBenchmarks, parseCutoffs } from '../storage/fieldIo';
 import { saveFile } from './files';
 import { applyTheme, toast } from './shell';
 
@@ -94,6 +95,25 @@ export function renderSettings(root: HTMLElement): void {
         <textarea id="ballsDesc" rows="2" placeholder="pl. 12 lb reaktív, ívelő; 11 lb poliészter spare-re">${esc(p.ballsDescription)}</textarea></div>
       <div class="field"><label class="field-label" for="longGoal">Hosszú távú cél</label>
         <input id="longGoal" value="${esc(p.longTermGoal)}" placeholder="pl. 160-as átlag a szezon végére"></div>
+    </section>
+
+    <section class="card form" id="fieldCard">
+      <h2>Mezőny-határok <span class="hint">versenyenként</span></h2>
+      <p class="muted small">Helyezéshez tartozó összpontszámok (pl. a 12. hely). A „Verseny előtt” oldal ebből számolja a határt és az esélyt. CSV-ből és JSON-ból is importálható.</p>
+      <ul class="bench-list">
+        ${[...(getData().benchmarks ?? [])]
+          .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '') || a.category.localeCompare(b.category))
+          .map((b) => `<li><div><b>${esc(b.series)} ${esc(b.event)}</b> <span class="tag">${b.category === 'csapat' ? 'csapat' : 'egyéni'}</span>
+              <div class="muted small">${esc(formatCutoffs(b.cutoffs))}${b.own ? ` · saját: ${b.own.total}${b.own.rank ? ` (${b.own.rank}.)` : ''}` : ''}</div></div>
+              <div class="bench-btns"><button type="button" class="btn btn-ghost" data-bedit="${esc(b.id)}">Szerkeszt</button>
+              <button type="button" class="icon-btn" data-bdel="${esc(b.id)}" aria-label="Törlés">✕</button></div></li>`)
+          .join('')}
+      </ul>
+      <div id="benchForm"></div>
+      <div class="btn-col">
+        <button type="button" class="btn" id="benchNew">+ Új verseny határai</button>
+        <button type="button" class="btn btn-ghost" id="benchCsv">Mezőny-határok exportja (CSV)</button>
+      </div>
     </section>
 
     <section class="card form" id="claudeCard">
@@ -283,6 +303,79 @@ export function renderSettings(root: HTMLElement): void {
     renderSettings(root);
   });
 
+  // Mezőny-határok: szerkesztés, új, törlés, CSV export.
+  const benchForm = root.querySelector<HTMLElement>('#benchForm')!;
+  const openBench = (b?: FieldBenchmark) => {
+    const v: FieldBenchmark = b ?? { id: '', series: 'Hivatal Kupa', event: '', date: todayIso(), category: 'egyeni', qualifyRank: 12, cutoffs: [] };
+    benchForm.innerHTML = `<div class="import-box">
+      <div class="row2">
+        <div class="field"><label class="field-label" for="bSeries">Sorozat</label><input id="bSeries" value="${esc(v.series)}"></div>
+        <div class="field"><label class="field-label" for="bEvent">Verseny</label><input id="bEvent" value="${esc(v.event)}" placeholder="pl. XXVI (2027 tavasz)"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="field-label" for="bDate">Dátum</label><input id="bDate" type="date" value="${esc(v.date ?? '')}"></div>
+        <div class="field"><label class="field-label" for="bCat">Kategória</label><select id="bCat">${opt('egyeni', 'Egyéni', v.category)}${opt('csapat', 'Csapat', v.category)}</select></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="field-label" for="bEntrants">Indulók / csapatok</label><input id="bEntrants" inputmode="numeric" value="${esc(v.entrants)}"></div>
+        <div class="field"><label class="field-label" for="bQual">Továbbjut (top)</label><input id="bQual" inputmode="numeric" value="${esc(v.qualifyRank)}"></div>
+      </div>
+      <div class="field"><label class="field-label" for="bCuts">Határok <span class="hint">hely=összeg, vesszővel</span></label>
+        <input id="bCuts" value="${esc(formatCutoffs(v.cutoffs))}" placeholder="1=409, 3=332, 12=297, 13=292"></div>
+      <div class="row2">
+        <div class="field"><label class="field-label" for="bOwn">Saját összeg</label><input id="bOwn" inputmode="numeric" value="${esc(v.own?.total)}"></div>
+        <div class="field"><label class="field-label" for="bOwnRank">Saját hely</label><input id="bOwnRank" inputmode="numeric" value="${esc(v.own?.rank)}"></div>
+      </div>
+      <div class="btn-col"><button type="button" class="btn btn-primary" id="bSave">Mentés</button><button type="button" class="btn btn-ghost" id="bCancel">Mégse</button></div>
+    </div>`;
+    benchForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    benchForm.querySelector('#bCancel')!.addEventListener('click', () => (benchForm.innerHTML = ''));
+    benchForm.querySelector('#bSave')!.addEventListener('click', async () => {
+      const intOr = (id: string) => {
+        const t = val(id);
+        return t === '' ? undefined : /^\d+$/.test(t) ? Number(t) : NaN;
+      };
+      const cutoffs = parseCutoffs(val('bCuts'));
+      const qual = intOr('bQual');
+      const ownTotal = intOr('bOwn');
+      if (!val('bEvent')) return toast('Add meg a verseny nevét.', true);
+      if (!cutoffs) return toast('A határok formátuma: hely=összeg, vesszővel (pl. 1=409, 12=297).', true);
+      if (!qual || Number.isNaN(qual)) return toast('Add meg, hányadik helyig jut tovább a mezőny.', true);
+      if ([intOr('bEntrants'), ownTotal, intOr('bOwnRank')].some((x) => Number.isNaN(x))) return toast('Az indulók, a saját összeg és a hely csak szám lehet.', true);
+      const next: FieldBenchmark = {
+        id: v.id || uid(),
+        series: val('bSeries') || 'Verseny',
+        event: val('bEvent'),
+        date: val('bDate') || undefined,
+        category: val('bCat') as FieldBenchmark['category'],
+        entrants: intOr('bEntrants'),
+        qualifyRank: qual,
+        cutoffs,
+        own: ownTotal !== undefined ? { total: ownTotal, rank: intOr('bOwnRank') } : undefined,
+      };
+      const list = getData().benchmarks ?? [];
+      const i = list.findIndex((x) => x.id === next.id);
+      await replaceAll({ ...getData(), benchmarks: i >= 0 ? list.map((x, k) => (k === i ? next : x)) : [...list, next] });
+      toast('Mezőny-határ mentve');
+      renderSettings(root);
+    });
+  };
+  root.querySelector('#benchNew')!.addEventListener('click', () => openBench());
+  root.querySelectorAll<HTMLButtonElement>('[data-bedit]').forEach((btn) =>
+    btn.addEventListener('click', () => openBench((getData().benchmarks ?? []).find((b) => b.id === btn.dataset.bedit))),
+  );
+  root.querySelectorAll<HTMLButtonElement>('[data-bdel]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      const b = (getData().benchmarks ?? []).find((x) => x.id === btn.dataset.bdel);
+      if (!b || !confirm(`Törlöd: ${b.series} ${b.event} (${b.category === 'csapat' ? 'csapat' : 'egyéni'})?`)) return;
+      await replaceAll({ ...getData(), benchmarks: (getData().benchmarks ?? []).filter((x) => x.id !== b.id) });
+      renderSettings(root);
+    }),
+  );
+  root.querySelector('#benchCsv')!.addEventListener('click', () =>
+    saveFile(`mezony-hatarok-${todayIso()}.csv`, exportBenchmarksCsv(getData().benchmarks ?? []), 'text/csv;charset=utf-8'),
+  );
+
   const markExported = async () => {
     await updateSettings({ lastExportAt: new Date().toISOString() });
     renderSettings(root);
@@ -324,6 +417,20 @@ function showPreview(root: HTMLElement, fileName: string, res: ImportResult) {
   const box = root.querySelector<HTMLElement>('#importPreview')!;
   const data = getData();
   const sum = summarizeImport(res.sessions);
+  const bmerge = mergeBenchmarks(data.benchmarks ?? [], res.benchmarks);
+  if (sum.sessions === 0 && res.benchmarks.length > 0) {
+    box.innerHTML = `<div class="import-box"><b>${esc(fileName)}</b>
+      <p><b>${res.benchmarks.length}</b> verseny mezőny-határai: ${bmerge.added} új, ${bmerge.updated} frissül.</p>
+      ${res.warnings.length ? `<p class="muted small">${res.warnings.length} figyelmeztetés: ${esc(res.warnings.slice(0, 3).join(' '))}</p>` : ''}
+      <div class="btn-col"><button type="button" class="btn btn-primary" id="impBench">Betöltés</button><button type="button" class="btn btn-ghost" id="impCancel">Mégse</button></div></div>`;
+    box.querySelector('#impCancel')!.addEventListener('click', () => (box.innerHTML = ''));
+    box.querySelector('#impBench')!.addEventListener('click', async () => {
+      await replaceAll({ ...data, benchmarks: bmerge.list });
+      toast(`Mezőny-határok betöltve: ${bmerge.added} új, ${bmerge.updated} frissítve`);
+      renderSettings(root);
+    });
+    return;
+  }
   if (sum.sessions === 0) {
     showPreviewError(root, `Nem találtam importálható alkalmat.${res.warnings.length ? ' ' + res.warnings.slice(0, 3).join(' ') : ''}`);
     return;
@@ -337,6 +444,7 @@ function showPreview(root: HTMLElement, fileName: string, res: ImportResult) {
         <li><b>${sum.sessions}</b> alkalom, <b>${sum.games}</b> játék${sum.withFrames ? ` (${sum.withFrames} frame-adattal)` : ''}${res.coachReports.length ? `, ${res.coachReports.length} edzői elemzés` : ''}</li>
         <li>${esc(fmtDate(sum.from!))} – ${esc(fmtDate(sum.to!))}</li>
         <li>Hozzáadásnál: <b>${merge.added}</b> új, <b>${merge.updated}</b> frissül, <b>${merge.skipped}</b> már megvan</li>
+        ${res.benchmarks.length ? `<li>Mezőny-határok: ${res.benchmarks.length} verseny (${bmerge.added} új, ${bmerge.updated} frissül)</li>` : ''}
       </ul>
       ${
         res.warnings.length
@@ -361,7 +469,7 @@ function showPreview(root: HTMLElement, fileName: string, res: ImportResult) {
 
   box.querySelector('#impCancel')!.addEventListener('click', () => (box.innerHTML = ''));
   box.querySelector('#impMerge')!.addEventListener('click', async () => {
-    await replaceAll({ ...data, schemaVersion: CURRENT_SCHEMA, sessions: merge.sessions, settings: settingsFor(), coachReports: mergeReports(data.coachReports, res.coachReports) });
+    await replaceAll({ ...data, schemaVersion: CURRENT_SCHEMA, sessions: merge.sessions, settings: settingsFor(), coachReports: mergeReports(data.coachReports, res.coachReports), benchmarks: bmerge.list });
     toast(`Import kész: ${merge.added} új, ${merge.updated} frissítve`);
     applyTheme(getData().settings.theme);
     renderSettings(root);
@@ -369,7 +477,7 @@ function showPreview(root: HTMLElement, fileName: string, res: ImportResult) {
   box.querySelector('#impReplace')!.addEventListener('click', async () => {
     const n = data.sessions.length;
     if (n > 0 && !confirm(`A jelenlegi ${n} alkalom törlődik, és a fájl tartalma kerül a helyére. Ez nem vonható vissza. Biztos vagy benne? (Előtte érdemes menteni.)`)) return;
-    await replaceAll({ ...data, schemaVersion: CURRENT_SCHEMA, sessions: res.sessions, settings: settingsFor(), coachReports: res.coachReports });
+    await replaceAll({ ...data, schemaVersion: CURRENT_SCHEMA, sessions: res.sessions, settings: settingsFor(), coachReports: res.coachReports, benchmarks: res.benchmarks.length ? res.benchmarks : (data.benchmarks ?? []) });
     toast(`Adatok lecserélve: ${res.sessions.length} alkalom`);
     applyTheme(getData().settings.theme);
     renderSettings(root);

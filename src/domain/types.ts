@@ -129,6 +129,8 @@ export interface Settings {
   lastExportAt?: string;
   /** Az alkalmak típusai (szerkeszthető). */
   sessionTypes: SessionTypeDef[];
+  /** A szimuláció beállításai (opcionális). */
+  sim?: SimSettings;
   /** A mentési emlékeztető elhalasztása eddig az időpontig (ISO). */
   backupSnoozeUntil?: string;
 }
@@ -156,6 +158,43 @@ export interface CoachReport {
   usage?: { inputTokens: number; outputTokens: number; costUsd: number };
 }
 
+/** Egy helyezéshez tartozó összpontszám a mezőnyben. */
+export interface Cutoff {
+  rank: number;
+  total: number;
+}
+
+/** Versenyenkénti mezőny-határok (pl. Hivatal Kupa selejtező, 2 játék összege). */
+export interface FieldBenchmark {
+  id: string;
+  /** Sorozat, pl. „Hivatal Kupa”. */
+  series: string;
+  /** A verseny megnevezése, pl. „XXV (2026 ősz)”. */
+  event: string;
+  date?: string;
+  category: 'egyeni' | 'csapat';
+  /** Indulók (egyéni) vagy csapatok száma. */
+  entrants?: number;
+  /** Ennyi jut tovább (pl. top 12 / top 16). */
+  qualifyRank: number;
+  cutoffs: Cutoff[];
+  /** Saját (vagy saját csapat) eredménye. */
+  own?: { total: number; rank?: number };
+}
+
+/** A szimuláció beállításai. */
+export interface SimSettings {
+  /** A legutóbbi ennyi játékból mintáz. */
+  games: number;
+  filter: 'mind' | 'verseny' | 'edzes';
+  /** Kézzel megadott határ (különben az utolsó 3 verseny továbbjutó helyének átlaga). */
+  cutoff?: number;
+  /** Az 1. és 2. játékot külön mintázza (hidegindítás). */
+  splitFirst: boolean;
+}
+
+export const defaultSim = (): SimSettings => ({ games: 40, filter: 'mind', splitFirst: true });
+
 /** Az adatmodell aktuális verziója (a migráció ehhez igazít). */
 export const CURRENT_SCHEMA = 2 as const;
 
@@ -166,6 +205,8 @@ export interface AppData {
   coachReports: CoachReport[];
   /** Már betöltött kezdő adatcsomagok azonosítói (így egy csomag csak egyszer kerül be). */
   appliedSeeds?: string[];
+  /** Mezőny-határok (opcionális). */
+  benchmarks?: FieldBenchmark[];
 }
 
 export const defaultSettings = (): Settings => ({
