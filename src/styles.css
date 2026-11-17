@@ -775,12 +775,15 @@ body, .card, .tile, .nav, details.more, .game-card { transition: background-colo
 }
 @keyframes fade-out { to { opacity: 0; } }
 
-/* Nagyobb kontraszt kérése: tömör háttér, határozott keret, átmenetek helyett egyszínű kiemelés. */
+/* Nagyobb kontraszt kérése (iPhone: Kisegítő lehetőségek → Kontraszt növelése):
+   a dizájn marad (átmenetek, vékony keretek), csak erősebb lesz a keret- és szövegszín,
+   és tömör a navigáció. A #hc-s szelektor a sötét téma tokenjeinél is erősebb. */
 @media (prefers-contrast: more) {
-  .nav, .fe-top, .fe-bottom { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; border-top: 2px solid var(--text); }
-  .card, .tile, details.more, .game-card, .claude-link, input, select, textarea, .btn, .chip { border: 2px solid var(--text); }
-  .btn-primary, .chip.on, .bar-fill, .step.on .step-n, .saved-check, .nav-new svg { background: var(--accent); box-shadow: none; }
-  .hero-value { background: none; color: var(--text); }
-  .hero::before { display: none; }
-  .muted, .hint { color: var(--text); }
+  :root:not(#hc) {
+    --border: color-mix(in srgb, var(--text) 32%, var(--surface));
+    --muted: color-mix(in srgb, var(--text) 82%, var(--surface));
+  }
+  .nav, .fe-top, .fe-bottom { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  input, select, textarea { border-color: color-mix(in srgb, var(--text) 45%, var(--surface)); }
+  .chip:not(.on), .btn:not(.btn-primary) { border-color: color-mix(in srgb, var(--text) 40%, var(--surface)); }
 }
