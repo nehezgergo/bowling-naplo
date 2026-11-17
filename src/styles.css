@@ -1,17 +1,25 @@
 :root {
-  --bg: #f6f7fb;
+  --bg: #f5f2ff;
   --surface: #ffffff;
-  --surface-2: #eef0f6;
-  --text: #161a23;
-  --muted: #5f6878;
-  --border: #dde1ea;
-  --accent: #2456d6;
+  --surface-2: #efeafb;
+  --text: #17132e;
+  --muted: #625b85;
+  --border: #e2dbf5;
+  --accent: #c4157a;
+  --accent-2: #2f6fe0;
   --accent-text: #ffffff;
-  --accent-soft: #e3eafc;
-  --good: #1a7f4b;
-  --bad: #c0392b;
-  --gold: #a86b00;
-  --radius: 14px;
+  --accent-soft: #fbe6f2;
+  --good: #0f8a63;
+  --bad: #d22f4c;
+  --gold: #9a6400;
+  --grad: linear-gradient(135deg, #e0218a 0%, #7c4dff 100%);
+  --grad-soft: linear-gradient(135deg, #fde7f3 0%, #ece6ff 100%);
+  --shadow: 0 1px 2px rgb(40 20 90 / 0.06), 0 8px 24px rgb(60 30 120 / 0.08);
+  --glow: 0 6px 18px rgb(214 35 127 / 0.28);
+  --page-glow: radial-gradient(1100px 520px at 110% -10%, rgb(224 33 138 / 0.10), transparent 60%),
+    radial-gradient(900px 520px at -20% 105%, rgb(47 111 224 / 0.10), transparent 60%);
+  --nav-bg: rgb(255 255 255 / 0.82);
+  --radius: 18px;
   --nav-h: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
@@ -19,34 +27,50 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #12151c;
-    --surface: #1b1f29;
-    --surface-2: #252a36;
-    --text: #eef1f6;
-    --muted: #9aa3b2;
-    --border: #2f3542;
-    --accent: #6d96ff;
-    --accent-text: #0d1220;
-    --accent-soft: #24304d;
-    --good: #4cc58a;
-    --bad: #ff7b6b;
-    --gold: #f2b84b;
+    --bg: #0b0a1d;
+    --surface: #161331;
+    --surface-2: #221d47;
+    --text: #f4f1ff;
+    --muted: #a9a3cf;
+    --border: #2d2758;
+    --accent: #ff4fae;
+    --accent-2: #4fd8ff;
+    --accent-text: #ffffff;
+    --accent-soft: #2e1640;
+    --good: #3ee0a8;
+    --bad: #ff6b86;
+    --gold: #ffc24a;
+    --grad: linear-gradient(135deg, #ff3ea5 0%, #8b5cff 55%, #3fa9ff 100%);
+    --grad-soft: linear-gradient(135deg, #2a1440 0%, #1c1a4a 100%);
+    --shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 10px 30px rgb(0 0 0 / 0.35);
+    --glow: 0 0 22px rgb(255 62 165 / 0.35);
+    --page-glow: radial-gradient(1000px 560px at 110% -10%, rgb(255 62 165 / 0.18), transparent 60%),
+      radial-gradient(900px 600px at -20% 110%, rgb(63 169 255 / 0.16), transparent 60%);
+    --nav-bg: rgb(22 19 49 / 0.78);
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #12151c;
-  --surface: #1b1f29;
-  --surface-2: #252a36;
-  --text: #eef1f6;
-  --muted: #9aa3b2;
-  --border: #2f3542;
-  --accent: #6d96ff;
-  --accent-text: #0d1220;
-  --accent-soft: #24304d;
-  --good: #4cc58a;
-  --bad: #ff7b6b;
-  --gold: #f2b84b;
+  --bg: #0b0a1d;
+  --surface: #161331;
+  --surface-2: #221d47;
+  --text: #f4f1ff;
+  --muted: #a9a3cf;
+  --border: #2d2758;
+  --accent: #ff4fae;
+  --accent-2: #4fd8ff;
+  --accent-text: #ffffff;
+  --accent-soft: #2e1640;
+  --good: #3ee0a8;
+  --bad: #ff6b86;
+  --gold: #ffc24a;
+  --grad: linear-gradient(135deg, #ff3ea5 0%, #8b5cff 55%, #3fa9ff 100%);
+  --grad-soft: linear-gradient(135deg, #2a1440 0%, #1c1a4a 100%);
+  --shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 10px 30px rgb(0 0 0 / 0.35);
+  --glow: 0 0 22px rgb(255 62 165 / 0.35);
+  --page-glow: radial-gradient(1000px 560px at 110% -10%, rgb(255 62 165 / 0.18), transparent 60%),
+    radial-gradient(900px 600px at -20% 110%, rgb(63 169 255 / 0.16), transparent 60%);
+  --nav-bg: rgb(22 19 49 / 0.78);
   color-scheme: dark;
 }
 
@@ -228,21 +252,21 @@ details.more[open] { padding-bottom: 6px; }
 
 /* Grafikon: kategória-színek (validálva világos és sötét felületen) */
 :root {
-  --series-1: #2a78d6; /* edzés */
-  --series-2: #eb6834; /* verseny */
-  --series-3: #1baf7a; /* egyéb */
-  --grid: #e8eaf0;
-  --axis-ink: #7a8290;
+  --series-1: #2f6fe0; /* edzés: elektromos kék */
+  --series-2: #d6237f; /* verseny: neon magenta */
+  --series-3: #b97a00; /* egyéb: borostyán */
+  --grid: #ece7f8;
+  --axis-ink: #7a7398;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
-    --grid: #2a303c; --axis-ink: #8a93a3;
+    --series-1: #4a8cff; --series-2: #e8389a; --series-3: #bf7f0a;
+    --grid: #272250; --axis-ink: #8e88b8;
   }
 }
 :root[data-theme='dark'] {
-  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
-  --grid: #2a303c; --axis-ink: #8a93a3;
+  --series-1: #4a8cff; --series-2: #e8389a; --series-3: #bf7f0a;
+  --grid: #272250; --axis-ink: #8e88b8;
 }
 
 .chart-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -555,3 +579,118 @@ code { font-size: 0.85em; background: var(--surface-2); padding: 2px 6px; border
 .step-h { font-size: 1.05rem; margin: 18px 0 8px; }
 .del-btn { width: 100%; margin: 8px 0; }
 .pending-banner { border: 2px solid var(--accent); display: grid; gap: 10px; }
+
+/* ═══════════════ Dizájn: „neon pálya” ═══════════════ */
+body {
+  background: var(--page-glow), var(--bg);
+  background-attachment: fixed;
+  font-feature-settings: 'tnum' 0;
+  letter-spacing: 0.005em;
+}
+::selection { background: var(--accent); color: #fff; }
+.page-title { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-weight: 800; letter-spacing: -0.01em; }
+
+/* Kártyák */
+.card, .tile, details.more, .game-card {
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+.card { border-radius: var(--radius); }
+.tile { border-radius: 16px; }
+.tiles-in .tile { box-shadow: none; }
+
+/* Fő szám: neon átmenet */
+.hero { position: relative; overflow: hidden; }
+.hero::before {
+  content: ''; position: absolute; inset: 0; background: var(--grad-soft); opacity: 0.9; pointer-events: none;
+}
+.hero > * { position: relative; }
+.hero-value {
+  background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+  letter-spacing: -0.035em;
+}
+.hero-label { text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.12em; }
+
+/* Gombok */
+.btn { border-radius: 14px; transition: transform 0.08s ease, box-shadow 0.15s ease, background-color 0.15s ease; }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn-primary { background: var(--grad); color: #fff; border: 0; box-shadow: var(--glow); }
+.btn-primary:disabled { box-shadow: none; }
+.btn-danger { border-radius: 14px; }
+.chip { border-radius: 999px; transition: background-color 0.15s ease, box-shadow 0.15s ease; }
+.chip.on { background: var(--grad); border-color: transparent; color: #fff; box-shadow: var(--glow); }
+.seg button[aria-pressed='true'] { box-shadow: var(--shadow); color: var(--accent); }
+
+/* Mezők */
+input, select, textarea { border-radius: 14px; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.game-input { letter-spacing: -0.01em; }
+.game-input.has-frames, .game-card.has-frames { border-color: var(--accent); }
+
+/* Haladás, sávok */
+.bar { background: var(--surface-2); }
+.bar-fill { background: var(--grad); box-shadow: var(--glow); }
+.band-range { border-color: var(--accent); }
+.band-mid { background: var(--accent); }
+
+/* Navigáció: üveghatás, neon kiemelés */
+.nav {
+  background: var(--nav-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%);
+  border-top: 1px solid var(--border);
+}
+.nav a { position: relative; transition: color 0.15s ease; }
+.nav a.active { color: var(--accent); }
+.nav a.active:not(.nav-new)::before {
+  content: ''; position: absolute; top: 0; left: 30%; right: 30%; height: 3px; border-radius: 0 0 4px 4px;
+  background: var(--grad); box-shadow: var(--glow);
+}
+.nav-new svg { background: var(--grad); box-shadow: var(--glow); }
+
+/* Kiemelt dobozok: átmenetes keret */
+.one-action, .pending-banner, .feedback.fb-info {
+  border: 1.5px solid transparent;
+  background: linear-gradient(var(--surface), var(--surface)) padding-box, var(--grad) border-box;
+}
+.one-action { box-shadow: var(--glow); }
+.focus, .report-next, .saved-action { background: var(--grad-soft); }
+.focus-label { color: var(--accent); letter-spacing: 0.08em; }
+.import-box { background: var(--grad-soft); border-color: var(--accent); }
+.claude-link { background: var(--grad-soft); }
+
+/* Lépésjelző */
+.step.on .step-n { background: var(--grad); color: #fff; box-shadow: var(--glow); }
+.step.done .step-n { background: var(--good); }
+
+/* Napló */
+.score { border-radius: 10px; }
+.score.best { outline: 2px solid var(--accent); outline-offset: -2px; }
+.badge.k-edzes { background: color-mix(in srgb, var(--series-1) 18%, var(--surface)); }
+.badge.k-verseny { background: color-mix(in srgb, var(--series-2) 18%, var(--surface)); }
+
+/* Frame-szerkesztő: világító bábuk */
+.fe-overlay { background: var(--page-glow), var(--bg); }
+.fe-top, .fe-bottom { background: var(--nav-bg); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.fe-cell { border-radius: 8px; }
+.fe-cell.cur { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), var(--glow); }
+.pin { background: var(--surface); border-color: var(--border); }
+.pin.up {
+  background: #ffffff; color: #17132e; border-color: #ffffff;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.fe-ok { border-color: var(--good); }
+
+/* Visszaigazolás, értesítés */
+.saved-card { border-radius: 24px; box-shadow: 0 20px 60px rgb(0 0 0 / 0.35), var(--glow); }
+.saved-check { background: var(--grad); box-shadow: var(--glow); }
+.toast { background: #17132e; color: #fff; border-radius: 14px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.3); }
+.toast.error { background: var(--bad); }
+.backup-banner { border-color: var(--gold); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .chip, input, select, textarea, .nav a { transition: none; }
+}

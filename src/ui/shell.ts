@@ -73,5 +73,5 @@ export function applyTheme(theme: Settings['theme']): void {
   if (theme === 'auto') root.removeAttribute('data-theme');
   else root.setAttribute('data-theme', theme);
   const dark = theme === 'dark' || (theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#12151c' : '#f6f7fb');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b0a1d' : '#f5f2ff');
 }
