@@ -34,7 +34,7 @@ describe('egy teendő: a szabályok', () => {
     const a = oneAction(applySeeds(emptyData()).data.sessions);
     expect(a.id).toBe('hidegindulas');
     expect(a.text).toMatch(/12 ponttal gyengébb/);
-    expect(a.source).toBe('1. játék 128,3 vs később 140,7 (7 verseny, ebből 5-ször jobb a 2.)');
+    expect(a.source).toBe('1. játék 128,3, később 140,7 (7 verseny, ebből 5-ször jobb a 2.)');
     expect(a.lossPerGame).toBeCloseTo((985 - 898) / 7 / 2);
   });
 
@@ -78,7 +78,7 @@ describe('egy teendő: a szabályok', () => {
     const s = [sess('edzes', Array(6).fill({ score: 150 }), 0), sess('kupa', Array(6).fill({ score: 140 }), 1)];
     const a = oneAction(s);
     expect(a.id).toBe('verseny');
-    expect(a.source).toBe('edzés 150,0 (6 játék) vs verseny 140,0 (6 játék)');
+    expect(a.source).toBe('edzés 150,0 (6 játék), verseny 140,0 (6 játék)');
     expect(a.lossPerGame).toBe(10);
     expect(oneAction([sess('edzes', Array(6).fill({ score: 144 }), 0), sess('kupa', Array(6).fill({ score: 140 }), 1)]).id).not.toBe('verseny');
   });
@@ -97,8 +97,8 @@ describe('egy teendő: prioritás és adathiány', () => {
   it('nincs adat: frame-enkénti rögzítést kér', () => {
     const a = oneAction([]);
     expect(a).toMatchObject({ id: 'adat', lossPerGame: null });
-    expect(a.text).toMatch(/3 játékot frame-enként/);
-    expect(a.source).toBe('0 frame-adatos játék van (legalább 3 kell)');
+    expect(a.text).toMatch(/3 játékot dobásonként/);
+    expect(a.source).toBe('0 dobásonként rögzített játék van (legalább 3 kell)');
   });
   it('van frame-adat, de nincs irány-jelölés: azt kéri', () => {
     const s = Array.from({ length: 3 }, (_, i) => sess('edzes', [game({ rolls: [9, 1] }, { rolls: [9, 1] })], i));

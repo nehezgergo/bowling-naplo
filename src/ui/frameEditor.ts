@@ -4,7 +4,9 @@
  */
 import { ALL_PINS, frameMarks, isFrameComplete, isGameComplete, isSplit, leaveKey, scoreGame } from '../domain/scoring';
 import type { Frame } from '../domain/types';
+import type { LiveContext } from '../coach/live';
 import { esc } from '../util/format';
+import { createLiveAdvice } from './liveAdvice';
 
 interface EFrame {
   rolls: number[];
@@ -15,12 +17,14 @@ interface EFrame {
   firstBall?: Frame['firstBall'];
 }
 
-const DIR_SHORT: Record<NonNullable<Frame['firstBall']>, string> = { zseb: 'Z', bal: 'B', jobb: 'J' };
+const DIR_SHORT: Record<NonNullable<Frame['firstBall']>, string> = { zseb: '◎', bal: '←', jobb: '→' };
 
 export interface FrameEditorOptions {
   title: string;
   frames?: Frame[];
   onDone: (frames: Frame[] | null) => void;
+  /** Ha meg van adva, játék közben AI-tanács kérhető. */
+  live?: { ctx: LiveContext; gameNo: number; ball?: string };
 }
 
 /** A hátsó sortól az első felé, ahogy a nekifutásból látszik (felül a 7–10). */
@@ -66,6 +70,11 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
   };
   let cur = firstIncomplete();
   let sel = new Set<number>();
+  const live = opts.live ? createLiveAdvice(() => {
+    render(true);
+    // A megérkezett tanács legyen látható.
+    overlay.querySelector('.live-tip, .live-advice .import-box')?.scrollIntoView({ block: 'nearest' });
+  }) : null;
 
   const overlay = document.createElement('div');
   overlay.className = 'fe-overlay';
@@ -83,6 +92,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
 
   function close(result: Frame[] | null | undefined, fromPop = false) {
     window.removeEventListener('popstate', onPop);
+    live?.stop();
     // Ugyanazon az úton távozik, amin érkezett (lefelé csúszik), aztán eltűnik.
     overlay.classList.add('closing');
     setTimeout(() => overlay.remove(), 220);
@@ -101,7 +111,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
         if (i < 9 && marks[0] === 'X') cells.push('', 'X');
         else for (let k = 0; k < boxes; k++) cells.push(marks[k] ?? '');
         const split = f.pinsLeft && isSplit(f.pinsLeft) && f.rolls[0] !== 10;
-        return `<button type="button" class="fe-cell${i === cur ? ' cur' : ''}${i === 9 ? ' tenth' : ''}" data-frame="${i}" aria-label="${i + 1}. frame">
+        return `<button type="button" class="fe-cell${i === cur ? ' cur' : ''}${i === 9 ? ' tenth' : ''}" data-frame="${i}" aria-label="${i + 1}. kör">
           <span class="fe-no">${i + 1}${f.firstBall ? `<i class="fe-dir"> ${DIR_SHORT[f.firstBall]}</i>` : ''}</span>
           <span class="fe-marks">${cells.map((c, k) => `<span class="${k === 0 && split ? 'split' : ''}">${esc(c)}</span>`).join('')}</span>
           <span class="fe-cum">${cumulative[i] ?? ''}</span>
@@ -110,7 +120,8 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
       .join('');
   };
 
-  const render = () => {
+  const render = (keepScroll = false) => {
+    const scroll = keepScroll ? (overlay.querySelector('.fe-body')?.scrollTop ?? 0) : 0;
     const done = cur >= 10;
     const f = frames[Math.min(cur, 9)];
     const { standing, fresh } = done ? { standing: [], fresh: true } : rackBefore(f);
@@ -118,7 +129,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
     const knocked = standing.length - sel.size;
     const { total } = scoreGame(frames.map(toFrame));
     const complete = isGameComplete(frames.map(toFrame));
-    const leaveInfo = !done && !fresh ? `Állás: ${leaveKey(standing)}${isSplit(standing) ? ' · <b class="split-tag">split</b>' : ''}` : '';
+    const leaveInfo = !done && !fresh ? `Megmaradt: ${leaveKey(standing).replace(/-/g, ', ')}${isSplit(standing) ? ' · <button type="button" class="term split-tag" data-term="split">split</button>' : ''}` : '';
 
     overlay.innerHTML = `
       <div class="fe-top">
@@ -130,9 +141,9 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
       <div class="fe-body">
         ${
           done
-            ? `<div class="fe-final"><div class="fe-final-score">${total}</div><div class="muted">Kész a játék. Koppints egy frame-re a javításhoz.</div></div>`
-            : `<div class="fe-status"><b>${cur + 1}. frame · ${rollNo}. dobás</b><span>${leaveInfo}</span></div>
-               <div class="fe-hint">Koppints az <b>állva maradt</b> bábukra</div>
+            ? `<div class="fe-final"><div class="fe-final-score">${total}</div><div class="muted">Kész a játék. Koppints egy körre a javításhoz.</div></div>`
+            : `<div class="fe-status"><b>${cur + 1}. kör · ${rollNo}. dobás</b><span>${leaveInfo}</span></div>
+               <div class="fe-hint">Koppints azokra, amelyek <b>állva maradtak</b></div>
                <div class="pins" role="group" aria-label="Bábuk">
                  ${ROWS.map(
                    (row) => `<div class="pin-row">${row
@@ -144,7 +155,8 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
                      .join('')}</div>`,
                  ).join('')}
                </div>
-               ${actionsHtml(fresh, f.rolls.length === 0, knocked)}`
+               ${actionsHtml(fresh, f.rolls.length === 0, knocked)}
+               ${live ? live.html(fresh ? 'Hogyan játsszak tovább?' : 'Hogyan üssem le ezeket?', !frames.some((x) => x.rolls.length)) : ''}`
         }
       </div>
       <div class="fe-bottom">
@@ -152,26 +164,27 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
         <span class="fe-total">Eddig: <b>${total}</b></span>
         ${hadFrames ? '<button type="button" class="btn btn-ghost danger-text" data-act="clear">Törlés</button>' : '<span></span>'}
       </div>`;
+    if (scroll) overlay.querySelector('.fe-body')!.scrollTop = scroll;
   };
 
   /** Gombsor: első dobás jelölés nélkül / jelölt bábukkal (irány = rögzítés), spare-kísérlet. */
   const actionsHtml = (fresh: boolean, firstOfFrame: boolean, knocked: number) => {
     if (!fresh)
       return `<div class="fe-actions">
-        <button type="button" class="btn fe-big fe-ok" data-act="spare">/<small>Bedobtam</small></button>
-        <button type="button" class="btn fe-big" data-act="miss">−<small>Nem</small></button>
+        <button type="button" class="btn fe-big fe-ok" data-act="spare">/<small>Mind leütve</small></button>
+        <button type="button" class="btn fe-big" data-act="miss">−<small>Egyet sem</small></button>
         <button type="button" class="btn btn-primary fe-big" data-act="commit" ${sel.size === 0 ? 'disabled' : ''}>${knocked}<small>ledöntve</small></button>
       </div>`;
     if (sel.size === 0 || !firstOfFrame)
       return `<div class="fe-actions">
-        <button type="button" class="btn fe-big fe-ok" data-act="strike">X<small>Strike</small></button>
-        <button type="button" class="btn fe-big" data-act="miss">−<small>Mind áll / csatorna</small></button>
+        <button type="button" class="btn fe-big fe-ok" data-act="strike">X<small>Mind ledőlt</small></button>
+        <button type="button" class="btn fe-big" data-act="miss">−<small>Egy sem dőlt le</small></button>
         <button type="button" class="btn btn-primary fe-big" data-act="commit" ${sel.size === 0 ? 'disabled' : ''}>${knocked}<small>ledöntve</small></button>
       </div>`;
-    return `<div class="fe-hint">${knocked} ledöntve · merre ment az első dobás? <span class="muted">(nem kötelező)</span></div>
+    return `<div class="fe-hint">${knocked} ledöntve · merre ment a golyó? <span class="muted">(nem kötelező)</span></div>
       <div class="fe-actions fe-dirs">
         <button type="button" class="btn fe-big" data-dir="bal">←<small>Balra</small></button>
-        <button type="button" class="btn fe-big fe-ok" data-dir="zseb">◎<small>Zseb</small></button>
+        <button type="button" class="btn fe-big fe-ok" data-dir="zseb">◎<small>Jó irány</small></button>
         <button type="button" class="btn fe-big" data-dir="jobb">→<small>Jobbra</small></button>
         <button type="button" class="btn btn-primary fe-big" data-act="commit">✓<small>Rögzít</small></button>
       </div>`;
@@ -220,12 +233,24 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
 
   overlay.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
+    if (
+      opts.live &&
+      live?.handle(t, () => {
+        const { standing, fresh } = rackBefore(frames[Math.min(cur, 9)]);
+        return {
+          ctx: opts.live!.ctx,
+          game: { no: opts.live!.gameNo, ball: opts.live!.ball, frames: frames.map(toFrame), standing: fresh ? undefined : standing },
+          label: fresh ? `Tanács a(z) ${cur + 1}. körhöz` : `Tanács a(z) ${cur + 1}. kör második dobásához`,
+        };
+      })
+    )
+      return;
     const pin = t.closest<HTMLButtonElement>('[data-pin]');
     if (pin && !pin.disabled) {
       const p = Number(pin.dataset.pin);
       if (sel.has(p)) sel.delete(p);
       else sel.add(p);
-      render();
+      render(true);
       return;
     }
     const dirBtn = t.closest<HTMLButtonElement>('[data-dir]');
@@ -235,7 +260,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
       const i = Number(cell.dataset.frame);
       if (i === cur) return;
       if (i > firstIncomplete()) return; // előre ugrani nem lehet
-      if (frames[i].rolls.length && !confirm(`Újra beviszed a ${i + 1}. frame-et?`)) return;
+      if (frames[i].rolls.length && !confirm(`Újra beviszed a(z) ${i + 1}. kört?`)) return;
       frames[i] = { rolls: [], stand: [] };
       cur = i;
       sel = new Set();
@@ -253,7 +278,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
     if (act === 'undo') undo();
     else if (act === 'cancel') close(undefined);
     else if (act === 'done') close(frames.map(toFrame));
-    else if (act === 'clear' && confirm('Törlöd ennek a játéknak a frame-adatait? A pontszám megmarad.')) close(null);
+    else if (act === 'clear' && confirm('Törlöd ennek a játéknak a dobásait? A pontszám megmarad.')) close(null);
   });
 
   render();

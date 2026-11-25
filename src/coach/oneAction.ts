@@ -60,12 +60,12 @@ function leaveAdvice(key: string, split: boolean, hand: Profile['hand']): string
   const corner = hand === 'bal' ? 7 : 10;
   const otherCorner = hand === 'bal' ? 10 : 7;
   if (pins.length === 1 && pins[0] === corner)
-    return `gyakorold a ${corner}-es bábut: a pálya ${corner === 10 ? 'bal' : 'jobb'} széléről, keresztben, egyenes dobással (spare golyóval)`;
+    return `gyakorold a ${corner}-es bábut: a pálya ${corner === 10 ? 'bal' : 'jobb'} széléről, keresztben, egyenes dobással`;
   if (pins.length === 1 && pins[0] === otherCorner)
     return `gyakorold a ${otherCorner}-es bábut: a pálya ${otherCorner === 10 ? 'bal' : 'jobb'} széléről, keresztben, egyenesen`;
-  if (pins.length === 1) return `gyakorold a ${pins[0]}-es bábut: ugyanarra a nyílra nézz, és csak a lábad helyét told el (3-6-9 rendszer)`;
-  if (split) return `a ${key} splitnél a biztos pontra játssz: üsd le biztosan az egyik bábut, ne kockáztass nyitott frame-et`;
-  return `gyakorold a ${key} állást: a legelső bábut találd el a megfelelő oldaláról, egyenes, nyugodt dobással`;
+  if (pins.length === 1) return `gyakorold a ${pins[0]}-es bábut: ugyanarra a nyílra nézz, mint máskor, csak állj kicsit arrébb`;
+  if (split) return `a ${key} splitnél (amikor rés van a bábuk közt) ne kockáztass, üsd le biztosan az egyik bábut`;
+  return `gyakorold a ${key} állást: célozz a legelöl álló bábura, egyenes, nyugodt dobással`;
 }
 
 /** Átlagos frame-pont (1–9. frame) a jelölt első dobás szerint; a jelöletlen strike zsebnek számít. */
@@ -100,8 +100,8 @@ export function oneAction(sessions: Session[], profile: Profile = {}): OneAction
       id: 'hidegindulas',
       text: best
         ? `Melegíts be úgy, ahogy eddig bevált (${best.bucket.label}${best.routine ? `: ${best.routine}` : ''}), mert az 1. játékod átlagosan ${Math.round(cs.diff)} ponttal gyengébb a későbbieknél.`
-        : `Melegíts be alaposabban: verseny előtt dobj legalább 8–10 bemelegítő dobást teljes rutinnal, mert az 1. játékod átlagosan ${Math.round(cs.diff)} ponttal gyengébb a későbbieknél.`,
-      source: `1. játék ${r1(cs.firstAvg)} vs később ${r1(cs.laterAvg)} (${cs.n} ${csLabel}, ebből ${times(cs.secondBetter)} jobb a 2.)`,
+        : `Melegíts be alaposabban: verseny előtt dobj legalább 8–10 próbadobást úgy, mintha már játszanál, mert az 1. játékod átlagosan ${Math.round(cs.diff)} ponttal gyengébb a későbbieknél.`,
+      source: `1. játék ${r1(cs.firstAvg)}, később ${r1(cs.laterAvg)} (${cs.n} ${csLabel}, ebből ${times(cs.secondBetter)} jobb a 2.)`,
       lossPerGame: cs.diff / gamesPer,
     });
   }
@@ -115,7 +115,7 @@ export function oneAction(sessions: Session[], profile: Profile = {}): OneAction
       candidates.push({
         id: 'spare',
         text: `${leaveAdvice(worst.key, worst.split, profile.hand).replace(/^./, (c) => c.toUpperCase())}.`,
-        source: `${leaveName(worst.key)}: ${worst.made}/${worst.n} az utolsó ${st.games} játékban (kb. ${r1(worst.lostPins / st.games)} pin/játék)`,
+        source: `${leaveName(worst.key)}: ${worst.made}/${worst.n} az utolsó ${st.games} játékban (kb. ${r1(worst.lostPins / st.games)} pont játékonként)`,
         lossPerGame: worst.lostPins / st.games,
       });
     }
@@ -132,8 +132,8 @@ export function oneAction(sessions: Session[], profile: Profile = {}): OneAction
       const sideWord = side === 'jobb' ? 'jobbra' : 'balra';
       candidates.push({
         id: 'iranyzes',
-        text: `Az első dobásod rendszeresen ${sideWord} megy: a célpont maradjon, a lábaddal lépj 2 boardot ${sideWord}, és figyeld, hogyan érkezik a zsebbe.`,
-        source: `első dobás: ${misses} tévesztésből ${sideCount} ${sideWord} az utolsó ${st.games} játékban${pocket !== null && miss !== null ? ` (zseb ${r1(pocket)} vs ${sideWord} ${r1(miss)} pont/frame)` : ''}`,
+        text: `Az első dobásod rendszeresen ${sideWord} megy: célozz ugyanoda, de indulj kb. 5 cm-rel (2 deszkacsíkkal) ${sideWord}.`,
+        source: `első dobás: ${misses} tévesztésből ${sideCount} ${sideWord} az utolsó ${st.games} játékban${pocket !== null && miss !== null ? ` (jó iránynál ${r1(pocket)}, ${sideWord} tévesztve ${r1(miss)} pont körönként)` : ''}`,
         lossPerGame: (sideCount / st.games) * perFrameLoss,
       });
     }
@@ -147,8 +147,8 @@ export function oneAction(sessions: Session[], profile: Profile = {}): OneAction
     if (gap >= GAP_MIN)
       candidates.push({
         id: 'verseny',
-        text: `Gyakorolj nyomás alatt: minden dobás előtt ugyanaz a 10 másodperces rutin, és az utolsó edzésjátékot játszd tétre, mert versenyen ${Math.round(gap)} ponttal gyengébb vagy.`,
-        source: `edzés ${r1(average(tr)!)} (${tr.length} játék) vs verseny ${r1(average(co)!)} (${co.length} játék)`,
+        text: `Minden dobás előtt csináld ugyanazt (kéztörlés, mély levegő, hova célzok), és edzésen az utolsó játékban tűzz ki egy elérendő pontszámot, mert versenyen ${Math.round(gap)} ponttal gyengébb vagy.`,
+        source: `edzés ${r1(average(tr)!)} (${tr.length} játék), verseny ${r1(average(co)!)} (${co.length} játék)`,
         lossPerGame: gap,
       });
   }
@@ -162,14 +162,14 @@ export function oneAction(sessions: Session[], profile: Profile = {}): OneAction
   if (st.games < 3)
     return {
       id: 'adat',
-      text: `Rögzíts legközelebb ${3 - st.games === 1 ? 'még 1 játékot' : `${3 - st.games} játékot`} frame-enként (▦ gomb), hogy lássam, melyik spare-állás viszi el a legtöbb pint.`,
-      source: `${st.games} frame-adatos játék van (legalább 3 kell)`,
+      text: `Rögzíts legközelebb ${3 - st.games === 1 ? 'még 1 játékot' : `${3 - st.games} játékot`} dobásonként (▦ gomb), hogy lássam, melyik megmaradt bábuk viszik el a legtöbb pontot.`,
+      source: `${st.games} dobásonként rögzített játék van (legalább 3 kell)`,
       lossPerGame: null,
     };
   if (st.dir.bal + st.dir.jobb + st.dir.zseb < DIR_MIN_MISSES)
     return {
       id: 'adat',
-      text: 'A frame-bevitelnél jelöld az első dobás irányát is (zseb / balra / jobbra), hogy kiderüljön, van-e rendszeres irányhibád.',
+      text: 'Dobásonkénti rögzítésnél jelöld az első dobás irányát is, hogy kiderüljön, rendszeresen ugyanarra téveszted-e.',
       source: `${st.dir.zseb + st.dir.bal + st.dir.jobb} jelölt első dobás az utolsó ${st.games} játékban`,
       lossPerGame: null,
     };
@@ -182,8 +182,8 @@ export function oneAction(sessions: Session[], profile: Profile = {}): OneAction
     };
   return {
     id: 'adat',
-    text: 'Most nincs kiugró veszteségforrás: tartsd a rutinodat, és rögzíts minden játékot frame-enként, hogy a következő gyenge pont is kiderüljön.',
-    source: `${st.games} frame-adatos játék, ${cs.n} kétjátékos alkalom: egyik szabály sem jelez`,
+    text: 'Most nincs kiugró hiba: csináld tovább így, és rögzíts minden játékot dobásonként, hogy a következő gyenge pont is kiderüljön.',
+    source: `${st.games} dobásonként rögzített játék, ${cs.n} kétjátékos alkalom: egyik szabály sem jelez`,
     lossPerGame: null,
   };
 }

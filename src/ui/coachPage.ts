@@ -2,6 +2,7 @@ import { getApiKey, requestCoachAdvice } from '../coach/claude';
 import type { CoachReport } from '../domain/types';
 import { addCoachReport, deleteCoachReport, getData } from '../state';
 import { esc, todayIso } from '../util/format';
+import { explain } from './glossary';
 import { toast } from './shell';
 
 const fmtWhen = (iso: string) =>
@@ -18,24 +19,24 @@ function reportHtml(r: CoachReport, open: boolean): string {
         <div class="report-goal">Cél: ${esc(a.nextGoal.metric)}: <b>${esc(a.nextGoal.target)}</b></div></div>
       </summary>
       ${r.question ? `<p class="report-q">Kérdésed: „${esc(r.question)}”</p>` : ''}
-      <p class="report-summary">${esc(a.summary)}</p>
-      ${a.previousAdviceReview ? `<h3>Az előző tanácsok óta</h3><p>${esc(a.previousAdviceReview)}</p>` : ''}
+      <p class="report-summary">${explain(a.summary)}</p>
+      ${a.previousAdviceReview ? `<h3>Az előző tanácsok óta</h3><p>${explain(a.previousAdviceReview)}</p>` : ''}
       ${a.strengths.length ? `<h3>Erősségeid</h3><ul class="report-list">${a.strengths.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
       ${
         a.focusAreas.length
           ? `<h3>Fókuszterületek</h3><ol class="report-focus">${a.focusAreas
-              .map((f) => `<li><b>${esc(f.title)}</b><div class="muted">${esc(f.why)}</div><div>${esc(f.how)}</div></li>`)
+              .map((f) => `<li><b>${esc(f.title)}</b><div class="muted">${explain(f.why)}</div><div>${explain(f.how)}</div></li>`)
               .join('')}</ol>`
           : ''
       }
       ${
         a.drills.length
           ? `<h3>Gyakorlatok a következő edzésre</h3><ul class="report-drills">${a.drills
-              .map((d) => `<li><b>${esc(d.name)}</b> <span class="badge">${esc(d.reps)}</span><div>${esc(d.description)}</div></li>`)
+              .map((d) => `<li><b>${esc(d.name)}</b> <span class="badge">${esc(d.reps)}</span><div>${explain(d.description)}</div></li>`)
               .join('')}</ul>`
           : ''
       }
-      <div class="report-next"><div class="focus-label">Következő cél</div><b>${esc(a.nextGoal.metric)}: ${esc(a.nextGoal.target)}</b><div>${esc(a.nextGoal.why)}</div></div>
+      <div class="report-next"><div class="focus-label">Következő cél</div><b>${esc(a.nextGoal.metric)}: ${esc(a.nextGoal.target)}</b><div>${explain(a.nextGoal.why)}</div></div>
       <p class="report-enc">${esc(a.encouragement)}</p>
       <div class="report-foot">
         <span class="muted small">${r.gamesCount} játék alapján${r.usage ? ` · kb. ${fmtUsd(r.usage.costUsd)}` : ''}</span>

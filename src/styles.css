@@ -787,3 +787,14 @@ body, .card, .tile, .nav, details.more, .game-card { transition: background-colo
   input, select, textarea { border-color: color-mix(in srgb, var(--text) 45%, var(--surface)); }
   .chip:not(.on), .btn:not(.btn-primary) { border-color: color-mix(in srgb, var(--text) 40%, var(--surface)); }
 }
+
+/* Koppintható szakszó, játék közbeni tanács */
+.term { border: 0; padding: 0; background: none; color: inherit; font: inherit; text-decoration: underline dotted 1.5px; text-underline-offset: 3px; text-decoration-color: var(--accent); cursor: pointer; }
+.term-sheet .btn { margin-top: 8px; }
+.live-advice { display: grid; gap: 10px; margin-top: 14px; }
+.live-ask { width: 100%; border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.live-tip { position: relative; padding: 12px 14px; border-radius: 14px; border: 1.5px solid transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, var(--grad) border-box; }
+.live-x { position: absolute; top: 2px; right: 2px; }
+.live-tip .focus-label { padding-right: 40px; }
+.live-now { font-size: 1.1rem; font-weight: 800; margin: 4px 0; }
+.live-tip ul { margin: 6px 0; padding-left: 20px; }

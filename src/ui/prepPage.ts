@@ -8,7 +8,7 @@ export function coldRow(label: string, c: ColdStart): string {
   if (c.n === 0) return `<tr><td>${esc(label)}</td><td colspan="4" class="muted">nincs kétjátékos alkalom</td></tr>`;
   const diff = c.firstAvg !== null && c.secondAvg !== null ? c.secondAvg - c.firstAvg : null;
   return `<tr>
-    <td>${esc(label)} <span class="muted small">n=${c.n}</span>${c.enough ? '' : '<div class="few">kevés adat</div>'}</td>
+    <td>${esc(label)} <span class="muted small">${c.n} alkalom</span>${c.enough ? '' : '<div class="few">kevés adat</div>'}</td>
     <td class="num">${fmtAvg(c.firstAvg)}</td>
     <td class="num">${fmtAvg(c.secondAvg)}</td>
     <td class="num ${diff !== null && diff > 0 ? 'down-txt' : ''}">${fmtSigned(diff)}</td>
@@ -36,9 +36,9 @@ export function renderPrepPage(root: HTMLElement): void {
     const d = comp.secondAvg - comp.firstAvg;
     verdict =
       d >= 5
-        ? `Versenyen az 1. játékod átlagosan <b>${fmtAvg(d)} ponttal</b> gyengébb a másodiknál (${comp.n} verseny alapján). Az első frame-eken múlik sok: a bemelegítést vedd komolyan.`
+        ? `Versenyen az 1. játékod átlagosan <b>${fmtAvg(d)} ponttal</b> gyengébb a másodiknál (${comp.n} verseny alapján). Ezért fontos az alapos bemelegítés.`
         : d <= -5
-          ? `Versenyen az 1. játékod az erősebb (${comp.n} verseny alapján). A 2. játékra figyelj: tempó, pihenő, ital.`
+          ? `Versenyen az 1. játékod az erősebb (${comp.n} verseny alapján). A 2. játékra figyelj: ne kapkodj, pihenj, igyál.`
           : `Versenyen nincs nagy különbség az 1. és a 2. játék között (${comp.n} verseny alapján).`;
   } else {
     verdict = `Versenyen ${comp.n} kétjátékos alkalom van; legalább ${MIN_SAMPLE} kell, hogy következtetést vonjunk le.`;
@@ -51,7 +51,7 @@ export function renderPrepPage(root: HTMLElement): void {
     <section class="card" id="liveCard"></section>
 
     <section class="card">
-      <h2>Hidegindítás</h2>
+      <h2>Jól indulsz?</h2>
       <p>${verdict}</p>
       ${coldTable(coldRow('Verseny', comp) + coldRow('Összes', all))}
     </section>
@@ -63,10 +63,10 @@ export function renderPrepPage(root: HTMLElement): void {
           ? `<div class="focus">
                <div class="focus-label">Bemelegítés (${bestScope})</div>
                <div class="focus-title">${esc(best.bucket.label)}${best.avgMinutes !== null ? `, kb. ${Math.round(best.avgMinutes)} perc` : ''}</div>
-               <div class="focus-text">Ezzel az 1. játék átlaga ${fmtAvg(best.bucket.firstAvg)} (n=${best.bucket.n}).</div>
+               <div class="focus-text">Ezzel az 1. játék átlaga ${fmtAvg(best.bucket.firstAvg)} (${best.bucket.n} alkalom alapján).</div>
                ${best.routine ? `<div class="prep-routine">„${esc(best.routine)}”<div class="muted small">${esc(best.routineDate ?? '')}, 1. játék: ${best.routineFirst}</div></div>` : ''}
              </div>`
-          : `<p class="muted">Még kevés adat: ${nWarm} alkalomnál van bemelegítés rögzítve, és egy csoportban legalább ${MIN_SAMPLE} kell. Rögzítsd minden alkalomnál: Új alkalom → Bemelegítés.</p>`
+          : `<p class="muted">Még kevés adat: ${nWarm} alkalomnál írtad be a bemelegítést. Írd be minden alkalom végén (Összegzés), és legalább ${MIN_SAMPLE} hasonló után itt látod, melyik válik be.</p>`
       }
       <h3 class="sub-h">1. játék a bemelegítő dobások szerint</h3>
       <table class="tbl">
@@ -82,7 +82,7 @@ export function renderPrepPage(root: HTMLElement): void {
     </section>
 
     ${fieldTables()}
-    <p class="muted small center"><a href="#/beallitasok">Mezőny-határok szerkesztése és importja a Beállításokban</a></p>`;
+    <p class="muted small center"><a href="#/beallitasok">A versenyek pontjainak szerkesztése a Beállításokban</a></p>`;
 
   mountChance(root.querySelector('#chanceCard')!);
   mountLive(root.querySelector('#liveCard')!);

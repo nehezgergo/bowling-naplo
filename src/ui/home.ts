@@ -1,5 +1,5 @@
 import { coachTips, nextFocus, sessionFeedback, type CoachTip } from '../coach/rules';
-import { avgFirstBall, leaveTable, sessionFrameStats, type FrameStats, type LeaveRow } from '../domain/scoring';
+import { leaveTable, sessionFrameStats, type FrameStats, type LeaveRow } from '../domain/scoring';
 import { oneAction } from '../coach/oneAction';
 import { coldStart } from '../domain/coldstart';
 import { dashboard, goalProgress, type GroupAvg } from '../domain/stats';
@@ -11,6 +11,7 @@ import { esc, fmtAvg, fmtDate, fmtInt, fmtRate, fmtSigned, todayIso } from '../u
 import { mountScoreChart } from './chart';
 import { saveFile } from './files';
 import { discardDraft, pendingDraft } from './newSession';
+import { explain } from './glossary';
 import { coldRow, coldTable } from './prepPage';
 import { takeJustSaved, toast } from './shell';
 
@@ -31,7 +32,7 @@ const LEVEL_LABEL: Record<CoachTip['level'], string> = { jo: 'Erősség', figyel
 const tipHtml = (t: CoachTip) => `
   <li class="tip tip-${t.level}">
     <span class="tip-icon" aria-label="${LEVEL_LABEL[t.level]}">${LEVEL_ICON[t.level]}</span>
-    <div><div class="tip-title">${esc(t.title)}</div><div class="tip-text">${esc(t.text)}</div></div>
+    <div><div class="tip-title">${esc(t.title)}</div><div class="tip-text">${explain(t.text)}</div></div>
   </li>`;
 
 function claudeBlock(latest: CoachReport | undefined): string {
@@ -53,8 +54,8 @@ function coachCard(tips: CoachTip[], gamesCount: number, latest?: CoachReport): 
     <h2>Edző</h2>
     ${
       focus
-        ? `<div class="focus"><div class="focus-label">Következő edzés fókusza</div>
-             <div class="focus-title">${esc(focus.title)}</div><div class="focus-text">${esc(focus.drill!)}</div></div>`
+        ? `<div class="focus"><div class="focus-label">Ezt gyakorold legközelebb</div>
+             <div class="focus-title">${esc(focus.title)}</div><div class="focus-text">${explain(focus.drill!)}</div></div>`
         : ''
     }
     ${shown.length ? `<ul class="tips">${shown.map(tipHtml).join('')}</ul>` : '<p class="muted">Most nincs kiemelendő eltérés. Gyűjts még adatot, főleg az „Az edzőnek” mezőkben.</p>'}
@@ -73,44 +74,44 @@ const rateTile = (label: string, made: number, n: number) => {
 function directionBlock(fs: FrameStats): string {
   const d = fs.dir;
   const tagged = d.zseb + d.bal + d.jobb;
-  if (tagged === 0) return `<p class="muted small">Az első dobás irányát (zseb / balra / jobbra) a frame-bevitelnél egy koppintással jelölheted.</p>`;
+  if (tagged === 0) return `<p class="muted small">Dobásonkénti rögzítésnél egy koppintással jelölheted, merre ment az első dobás.</p>`;
   // A jelöletlen strike zsebnek számít.
   const zseb = d.zseb + d.strike;
   const total = zseb + d.bal + d.jobb;
   const bar = (label: string, v: number, cls: string) =>
     `<div class="dir-row"><span>${label}</span><div class="dir-bar"><i class="${cls}" style="width:${((v / total) * 100).toFixed(1)}%"></i></div><b>${total < 10 ? v : `${Math.round((v / total) * 100)}%`}</b></div>`;
-  return `<h3 class="sub-h">Első dobás <span class="hint">${total} dobás${d.strike ? ', a strike zsebnek számít' : ''}${d.none ? `; ${d.none} jelöletlen` : ''}</span></h3>
-    ${bar('Balra', d.bal, 'k-bal')}${bar('Zseb', zseb, 'k-zseb')}${bar('Jobbra', d.jobb, 'k-jobb')}`;
+  return `<h3 class="sub-h">Merre megy az első dobás? <span class="hint">${total} dobás${d.strike ? ', a strike jó iránynak számít' : ''}${d.none ? `; ${d.none} jelöletlen` : ''}</span></h3>
+    ${bar('Balra', d.bal, 'k-bal')}${bar('Jó irány', zseb, 'k-zseb')}${bar('Jobbra', d.jobb, 'k-jobb')}`;
 }
 
 function frameCard(fs: FrameStats, corner: number): string {
   if (fs.games === 0)
-    return `<section class="card"><h2>Frame-statisztika</h2><p class="muted">Egy játék sorában a ▦ gombbal frame-enként, bábu-ábrával is rögzíthetsz. Ebből számolom a strike-, spare- és split-arányt.</p></section>`;
+    return `<section class="card"><h2>Dobásaid részletesen</h2><p class="muted">Ha egy játékot a ▦ gombbal dobásonként rögzítesz, itt látod, mi megy jól és mit érdemes gyakorolni.</p></section>`;
   const rows = leaveTable(fs);
   const shown = rows.slice(0, 8);
   const rowHtml = (r: LeaveRow) => `<tr class="${r.worst ? 'worst' : ''}">
-      <td>${esc(r.key)}${r.split ? ' <span class="tag">split</span>' : ''}${r.worst ? ' <span class="tag tag-bad">legtöbb pin</span>' : ''}</td>
+      <td>${esc(r.key)}${r.split ? ' <span class="tag">split</span>' : ''}${r.worst ? ' <span class="tag tag-bad">legtöbb pont</span>' : ''}</td>
       <td class="num">${esc(fmtRate(r.made, r.n))}</td>
       <td class="num">${r.missed ? `−${Math.round(r.lostPins)}` : '0'}</td></tr>`;
   return `<section class="card">
-    <h2>Frame-statisztika <span class="hint">${fs.games} részletes játék</span></h2>
+    <h2>Dobásaid részletesen <span class="hint">${fs.games} részletes játék</span></h2>
     <div class="tiles tiles-in">
-      ${rateTile('Strike', fs.strikes, fs.strikeChances)}
-      ${rateTile('Spare', fs.spares, fs.spareChances)}
-      ${tile('Nyitott / játék', fmtAvg(fs.opens / fs.games))}
-      ${rateTile('Egy bábus', fs.singlePinSpares, fs.singlePinChances)}
-      ${rateTile('Több bábus', fs.multiPinSpares, fs.multiPinChances)}
-      ${rateTile(`${corner}-es bábu`, fs.cornerSpares, fs.cornerLeaves)}
-      ${tile('Split', fs.leavesKnown < 10 ? `${fs.splits}/${fs.leavesKnown}` : `${Math.round((fs.splits / fs.leavesKnown) * 100)}%`, `<div class="tile-sub">${fs.splits}× · ${fs.splitsConverted} leütve</div>`)}
+      ${rateTile('Strike (elsőre mind)', fs.strikes, fs.strikeChances)}
+      ${rateTile('Spare (másodikra mind)', fs.spares, fs.spareChances)}
+      ${tile('Kör, ahol maradt bábu', fmtAvg(fs.opens / fs.games))}
+      ${rateTile('Egy bábu maradt, leütve', fs.singlePinSpares, fs.singlePinChances)}
+      ${rateTile('Több maradt, leütve', fs.multiPinSpares, fs.multiPinChances)}
+      ${rateTile(`${corner}-es maradt, leütve`, fs.cornerSpares, fs.cornerLeaves)}
+      ${tile('Split (rés a bábuk közt)', fs.leavesKnown < 10 ? `${fs.splits}/${fs.leavesKnown}` : `${Math.round((fs.splits / fs.leavesKnown) * 100)}%`, `<div class="tile-sub">${fs.splits}× · ${fs.splitsConverted} leütve</div>`)}
     </div>
     ${
       rows.length
-        ? `<h3 class="sub-h">Spare-állások <span class="hint">gyakoriság szerint</span></h3>
-           <table class="tbl leave-tbl"><thead><tr><th>Állás</th><th>Leütve</th><th>Pin</th></tr></thead><tbody>
+        ? `<h3 class="sub-h">Mely bábuk maradnak meg? <span class="hint">leggyakoribb elöl</span></h3>
+           <table class="tbl leave-tbl"><thead><tr><th>Maradt bábu</th><th>Leütve</th><th>Elveszett pont</th></tr></thead><tbody>
            ${shown.map(rowHtml).join('')}</tbody></table>
-           ${rows.length > shown.length ? `<details class="tips-more"><summary>Mind a(z) ${rows.length} állás</summary><table class="tbl leave-tbl"><tbody>${rows.slice(8).map(rowHtml).join('')}</tbody></table></details>` : ''}
-           <p class="muted small">„Pin”: becsült veszteség a kihagyásokból (bent maradt bábuk + elmaradt spare-bónusz, átlagosan ${fmtAvg(avgFirstBall(fs))} pin/kihagyás).</p>`
-        : '<p class="muted small">Bábu-ábrával rögzített állás még nincs.</p>'
+           ${rows.length > shown.length ? `<details class="tips-more"><summary>Mind a(z) ${rows.length}</summary><table class="tbl leave-tbl"><tbody>${rows.slice(8).map(rowHtml).join('')}</tbody></table></details>` : ''}
+           <p class="muted small">Az „elveszett pont” becslés: ennyivel többet dobtál volna, ha a megmaradt bábukat leütöd.</p>`
+        : '<p class="muted small">Még nincs rögzítve, mely bábuk maradtak meg.</p>'
     }
     ${directionBlock(fs)}
   </section>`;
@@ -134,8 +135,8 @@ function oneActionCard(): string {
   const a = oneAction(sessions, settings.profile);
   return `<section class="card one-action" aria-label="Egy teendő">
     <div class="focus-label">Egy teendő a következő edzésre</div>
-    <p class="one-action-text">${esc(a.text)}</p>
-    <div class="one-action-src">${esc(a.source)}${a.lossPerGame !== null ? ` · becsült veszteség kb. ${fmtAvg(a.lossPerGame)} pin/játék` : ''}</div>
+    <p class="one-action-text">${explain(a.text)}</p>
+    <div class="one-action-src">${esc(a.source)}${a.lossPerGame !== null ? ` · ez kb. ${fmtAvg(a.lossPerGame)} pontba kerül játékonként` : ''}</div>
   </section>`;
 }
 
@@ -145,7 +146,7 @@ function coldCard(): string {
   const train = coldStart(sessions, 'edzes');
   if (comp.n + train.n === 0) return '';
   return `<section class="card">
-    <h2>Hidegindítás <span class="hint">1. vs 2. játék</span></h2>
+    <h2>Jól indulsz? <span class="hint">1. és 2. játékod</span></h2>
     ${coldTable(coldRow('Verseny', comp) + coldRow('Edzés', train))}
     <a class="claude-link" href="#/verseny-elott"><span><b>Verseny előtt</b><span class="muted"> · bemelegítés, ami bevált</span></span><span aria-hidden="true">›</span></a>
   </section>`;

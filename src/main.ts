@@ -3,6 +3,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { getData, init } from './state';
 import { requestPersistence } from './storage/db';
 import { renderCoachPage } from './ui/coachPage';
+import { initGlossary, renderGlossary } from './ui/glossary';
 import { renderHome } from './ui/home';
 import { renderPrepPage } from './ui/prepPage';
 import { renderLog } from './ui/log';
@@ -17,6 +18,7 @@ const routes: Record<string, (root: HTMLElement, params: URLSearchParams) => voi
   beallitasok: renderSettings,
   edzo: renderCoachPage,
   'verseny-elott': renderPrepPage,
+  szotar: renderGlossary,
 };
 
 function route() {
@@ -42,6 +44,7 @@ async function start() {
   applyTheme(getData().settings.theme);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme(getData().settings.theme));
   window.addEventListener('hashchange', route);
+  initGlossary();
   route();
   requestPersistence();
   registerSW({ immediate: true });

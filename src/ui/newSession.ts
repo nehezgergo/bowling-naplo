@@ -23,7 +23,9 @@ import {
 import { deleteSession, getData, lastSession, upsertSession } from '../state';
 import { esc, fmtAvg, fmtDate, todayIso, uid } from '../util/format';
 import { oneAction } from '../coach/oneAction';
+import type { LiveContext } from '../coach/live';
 import { openFrameEditor } from './frameEditor';
+import { createLiveAdvice } from './liveAdvice';
 import { navigate, setJustSaved, showSaved, toast } from './shell';
 
 type Step = 1 | 2 | 3;
@@ -238,7 +240,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
         ${textField('coach.lanes', 'Pálya', c.lanes, 'pl. 5–6')}
       </div>
       <div class="field"><div class="field-label">Golyó</div>${chips('ball', balls.map((b) => ({ id: b, label: b })), draft.ball)}</div>
-      <div class="field"><div class="field-label">Olajozás</div>${chips('coach.oil', [
+      <div class="field"><div class="field-label">Olajozás <button type="button" class="term" data-term="olaj">mi ez?</button></div>${chips('coach.oil', [
         { id: 'rovid', label: 'Rövid' },
         { id: 'kozepes', label: 'Közepes' },
         { id: 'hosszu', label: 'Hosszú' },
@@ -249,8 +251,8 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
         { id: 'normal', label: 'Normál' },
         { id: 'olajos', label: 'Olajos' },
       ], c.laneCondition)}</div>
-      ${textField('coach.target', 'Célpont, vonal', c.target, 'pl. 2. nyíl, 10-es board')}
-      ${textField('coach.focusGoal', 'Mai fókusz', c.focusGoal, 'pl. spare-ek, egyenletes tempó')}
+      ${textField('coach.target', 'Hova célzol?', c.target, 'pl. jobbról a 2. nyíl')}
+      ${textField('coach.focusGoal', 'Mire figyelsz ma?', c.focusGoal, 'pl. ne kapkodjak, egyetlen bábut leütni')}
       <div class="form-actions">
         ${existing ? '<span></span>' : '<button type="button" class="btn btn-ghost" id="resetBtn">Elvetés</button>'}
         <button type="button" class="btn btn-primary btn-lg" data-step="2">Tovább: játékok →</button>
@@ -272,12 +274,12 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
       </div>
       <div class="gc-body">
         <div class="gc-score">
-          <label class="gc-label" for="g${i}">${hasFrames ? 'Pontszám (frame-ekből)' : 'Végeredmény'}</label>
+          <label class="gc-label" for="g${i}">${hasFrames ? 'Pontszám (a dobásokból)' : 'Végeredmény'}</label>
           <input id="g${i}" class="game-input${invalid ? ' invalid' : ''}" data-i="${i}" inputmode="numeric" pattern="[0-9]*" maxlength="3"
             enterkeyhint="next" autocomplete="off" placeholder="pl. 156" value="${esc(v)}" ${hasFrames ? 'readonly' : ''}>
         </div>
         <span class="gc-or">vagy</span>
-        <button type="button" class="btn gc-frames${hasFrames ? ' on' : ''}" data-frames="${i}">▦<small>${hasFrames ? 'Frame-ek' : 'Frame-enként'}</small></button>
+        <button type="button" class="btn gc-frames${hasFrames ? ' on' : ''}" data-frames="${i}">▦<small>${hasFrames ? 'Dobások' : 'Dobásonként'}</small></button>
       </div>
       ${invalid ? '<div class="gc-err">0 és 300 közötti egész szám legyen.</div>' : ''}
     </div>`;
@@ -285,10 +287,11 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
 
   const step2 = () => `
     ${conditionsLine()}
-    <p class="muted small">Minden játéknál <b>vagy</b> írd be a végeredményt (a kijelző szerinti pontszámot), <b>vagy</b> rögzítsd frame-enként a bábukkal. Ez utóbbiból lesz a strike-, spare- és állás-statisztika.</p>
+    <p class="muted small">Minden játéknál <b>vagy</b> írd be a végeredményt (a kijelző szerinti pontszámot), <b>vagy</b> rögzítsd dobásonként. Utóbbinál menet közben tanácsot is kérhetsz.</p>
     <div id="games">${draft.scores.map(gameCard).join('')}</div>
     <button type="button" class="btn btn-ghost add-game" id="addGame">+ Következő játék</button>
     <div class="games-summary" id="gamesSummary">${summaryText()}</div>
+    ${existing ? '' : '<div id="nextAdvice"></div>'}
     <div class="form-actions">
       <button type="button" class="btn btn-ghost" data-step="1">← Vissza</button>
       <button type="button" class="btn btn-primary btn-lg" data-step="3">Lezárás →</button>
@@ -318,7 +321,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
       ${textField('warmup.routine', 'Rutin', w.routine, 'pl. nyújtás, 4 üres lendítés, 2 dobás a 10-esre', true)}
 
       <h2 class="step-h">Hogy ment?</h2>
-      ${c.focusGoal ? `<div class="field"><div class="field-label">Sikerült a fókusz? <span class="hint">„${esc(c.focusGoal)}”</span></div>${chips('coach.focusResult', [
+      ${c.focusGoal ? `<div class="field"><div class="field-label">Sikerült, amire figyeltél? <span class="hint">„${esc(c.focusGoal)}”</span></div>${chips('coach.focusResult', [
         { id: 'igen', label: 'Igen' },
         { id: 'reszben', label: 'Részben' },
         { id: 'nem', label: 'Nem' },
@@ -351,12 +354,29 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
       </div>`;
   };
 
+  /** Az AI-tanácshoz: a körülmények és az adott játék előtti, már beírt játékok. */
+  const liveContext = (before = draft.scores.length): LiveContext => ({
+    type: draft.type,
+    ball: draft.ball || undefined,
+    coach: draft.coach,
+    games: draft.scores.slice(0, before).flatMap((s, k) => {
+      const score = parseScore(s);
+      return score === null ? [] : [{ no: k + 1, score, frames: draft.frames[k], ball: draft.gameBalls[k] || undefined }];
+    }),
+  });
+  const drawLive = () => {
+    const el = root.querySelector('#nextAdvice');
+    if (el) el.innerHTML = nextLive.html('Tanács a következő játékhoz', validScores().length === 0);
+  };
+  const nextLive = createLiveAdvice(drawLive);
+
   const render = () => {
     root.innerHTML = `
       <h1 class="page-title">${existing ? 'Alkalom szerkesztése' : 'Új alkalom'}</h1>
       ${stepper()}
       <form id="sessionForm" class="form" novalidate>${draft.step === 1 ? step1() : draft.step === 2 ? step2() : step3()}</form>`;
     bind();
+    drawLive();
     window.scrollTo(0, 0);
   };
 
@@ -386,6 +406,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
     if (!el) return;
     el.innerHTML = draft.scores.map(gameCard).join('');
     root.querySelector('#gamesSummary')!.textContent = summaryText();
+    if (!root.querySelector('#nextAdvice .spinner, #nextAdvice .live-tip')) drawLive();
     if (focusIndex !== undefined) {
       const inp = el.querySelector<HTMLInputElement>(`#g${focusIndex}`);
       inp?.focus();
@@ -473,6 +494,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
 
     form.addEventListener('click', (e) => {
       const t = e.target as HTMLElement;
+      if (nextLive.handle(t, () => ({ ctx: liveContext(), label: 'Tanács a következő játékhoz' }))) return;
       const chip = t.closest<HTMLButtonElement>('.chip');
       if (chip) {
         const field = chip.dataset.field!;
@@ -525,6 +547,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
         openFrameEditor({
           title: `${i + 1}. játék`,
           frames: draft.frames[i],
+          live: { ctx: liveContext(i), gameNo: i + 1, ball: draft.gameBalls[i] || undefined },
           onDone: (frames) => {
             draft.frames[i] = frames ?? undefined;
             if (frames) draft.scores[i] = String(scoreGame(frames).total);
@@ -542,6 +565,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
       draft.scores[Number(inp.dataset.i)] = inp.value;
       inp.classList.toggle('invalid', inp.value !== '' && parseScore(inp.value) === null);
       root.querySelector('#gamesSummary')!.textContent = summaryText();
+    if (!root.querySelector('#nextAdvice .spinner, #nextAdvice .live-tip')) drawLive();
       persist();
     });
     gamesEl?.addEventListener('keydown', (e) => {

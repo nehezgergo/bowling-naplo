@@ -98,8 +98,8 @@ export function renderSettings(root: HTMLElement): void {
     </section>
 
     <section class="card form" id="fieldCard">
-      <h2>Mezőny-határok <span class="hint">versenyenként</span></h2>
-      <p class="muted small">Helyezéshez tartozó összpontszámok (pl. a 12. hely). A „Verseny előtt” oldal ebből számolja a határt és az esélyt. CSV-ből és JSON-ból is importálható.</p>
+      <h2>Korábbi versenyek pontjai</h2>
+      <p class="muted small">Melyik helyezéshez hány pont kellett. Ebből becsüli az app az esélyedet a „Verseny előtt” oldalon.</p>
       <ul class="bench-list">
         ${[...(getData().benchmarks ?? [])]
           .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '') || a.category.localeCompare(b.category))
@@ -111,8 +111,8 @@ export function renderSettings(root: HTMLElement): void {
       </ul>
       <div id="benchForm"></div>
       <div class="btn-col">
-        <button type="button" class="btn" id="benchNew">+ Új verseny határai</button>
-        <button type="button" class="btn btn-ghost" id="benchCsv">Mezőny-határok exportja (CSV)</button>
+        <button type="button" class="btn" id="benchNew">+ Új verseny</button>
+        <button type="button" class="btn btn-ghost" id="benchCsv">Versenyek letöltése (CSV)</button>
       </div>
     </section>
 
@@ -131,6 +131,8 @@ export function renderSettings(root: HTMLElement): void {
       }
       <p class="muted small">A kulcs csak ezen az eszközön tárolódik, a mentésekbe (export) nem kerül bele. Állíts be havi költési limitet a Console-ban.</p>
     </section>
+
+    <section class="card"><h2>Nem értesz egy szót?</h2><a class="claude-link" href="#/szotar"><span><b>Szótár</b><span class="muted"> · minden szó egyszerűen</span></span><span aria-hidden="true">›</span></a></section>
 
     <section class="card form">
       <h2>Megjelenés</h2>
@@ -320,7 +322,7 @@ export function renderSettings(root: HTMLElement): void {
         <div class="field"><label class="field-label" for="bEntrants">Indulók / csapatok</label><input id="bEntrants" inputmode="numeric" value="${esc(v.entrants)}"></div>
         <div class="field"><label class="field-label" for="bQual">Továbbjut (top)</label><input id="bQual" inputmode="numeric" value="${esc(v.qualifyRank)}"></div>
       </div>
-      <div class="field"><label class="field-label" for="bCuts">Határok <span class="hint">hely=összeg, vesszővel</span></label>
+      <div class="field"><label class="field-label" for="bCuts">Pontok <span class="hint">helyezés=pont, vesszővel</span></label>
         <input id="bCuts" value="${esc(formatCutoffs(v.cutoffs))}" placeholder="1=409, 3=332, 12=297, 13=292"></div>
       <div class="row2">
         <div class="field"><label class="field-label" for="bOwn">Saját összeg</label><input id="bOwn" inputmode="numeric" value="${esc(v.own?.total)}"></div>
@@ -441,7 +443,7 @@ function showPreview(root: HTMLElement, fileName: string, res: ImportResult) {
     <div class="import-box">
       <b>${esc(fileName)}</b>
       <ul class="import-sum">
-        <li><b>${sum.sessions}</b> alkalom, <b>${sum.games}</b> játék${sum.withFrames ? ` (${sum.withFrames} frame-adattal)` : ''}${res.coachReports.length ? `, ${res.coachReports.length} edzői elemzés` : ''}</li>
+        <li><b>${sum.sessions}</b> alkalom, <b>${sum.games}</b> játék${sum.withFrames ? ` (${sum.withFrames} dobásonként rögzítve)` : ''}${res.coachReports.length ? `, ${res.coachReports.length} edzői elemzés` : ''}</li>
         <li>${esc(fmtDate(sum.from!))} – ${esc(fmtDate(sum.to!))}</li>
         <li>Hozzáadásnál: <b>${merge.added}</b> új, <b>${merge.updated}</b> frissül, <b>${merge.skipped}</b> már megvan</li>
         ${res.benchmarks.length ? `<li>Mezőny-határok: ${res.benchmarks.length} verseny (${bmerge.added} új, ${bmerge.updated} frissül)</li>` : ''}

@@ -80,8 +80,8 @@ export function mountScoreChart(host: HTMLElement, all: GameRef[], opts: ChartOp
 
     host.querySelector('#chartLegend')!.innerHTML =
       cats.map((c) => `<span>${legendKey(c)}${CAT_LABEL[c]}</span>`).join('') +
-      `<span><i class="key-line"></i>Mozgóátlag (20)</span>` +
-      (tr ? `<span><i class="key-line dashed"></i>Trend</span>` : '');
+      `<span><i class="key-line"></i>Utolsó 20 átlaga</span>` +
+      (tr ? `<span><i class="key-line dashed"></i>Merre tart</span>` : '');
 
     const W = Math.max(300, wrap.clientWidth || 340);
     const H = 230;
@@ -139,9 +139,9 @@ export function mountScoreChart(host: HTMLElement, all: GameRef[], opts: ChartOp
       <rect class="hit" x="${m.l - 8}" y="0" width="${iw + 16}" height="${H}"/>`;
 
     host.querySelector('#chartFoot')!.innerHTML = tr && n >= 5
-      ? `Trend: <b class="${tr.slope >= 0 ? 'up' : 'down'}">${fmtSigned(tr.slope * 10)}</b> pont / 10 játék az időszakban`
+      ? `Merre tart: <b class="${tr.slope >= 0 ? 'up' : 'down'}">${fmtSigned(tr.slope * 10)}</b> pont 10 játékonként`
       : n < 5
-        ? 'Néhány játék után itt látod a trendet.'
+        ? 'Néhány játék után itt látod, javulsz-e.'
         : '';
 
     const cross = svg.querySelector<SVGLineElement>('#cross')!;
@@ -159,7 +159,7 @@ export function mountScoreChart(host: HTMLElement, all: GameRef[], opts: ChartOp
       const l1 = document.createElement('div');
       l1.textContent = `${shortDate(g.date)} · ${typeLabel(g.type)} · ${g.index}. játék`;
       const l2 = document.createElement('div');
-      l2.textContent = `${g.ball} · mozgóátlag ${fmtAvg(ma[i])}`;
+      l2.textContent = `${g.ball} · utolsó 20 átlaga ${fmtAvg(ma[i])}`;
       tip.append(strong, l1, l2);
       tip.hidden = false;
       const left = (x(i) / W) * rect.width;

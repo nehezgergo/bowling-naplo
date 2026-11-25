@@ -71,7 +71,7 @@ export function typeOptions(sessions: Session[]): { id: string; label: string }[
 function dirLine(s: Session): string {
   const d = sessionFrameStats([s]).dir;
   if (d.zseb + d.bal + d.jobb === 0) return '';
-  return `<div class="log-dir">Első dobás: zseb ${d.zseb + d.strike} · balra ${d.bal} · jobbra ${d.jobb}</div>`;
+  return `<div class="log-dir">Első dobás: jó irány ${d.zseb + d.strike} · balra ${d.bal} · jobbra ${d.jobb}</div>`;
 }
 
 const opt = (value: string, label: string, cur: string) =>

@@ -22,6 +22,11 @@ const PRICE_OUT = 20;
 export const estimateCostUsd = (inputTokens: number, outputTokens: number) =>
   (inputTokens * PRICE_IN + outputTokens * PRICE_OUT) / 1_000_000;
 
+/** Közérthetőség: a játékos kezdő, a szakszavakat nem ismeri. */
+export const PLAIN_RULES = `- A játékos KEZDŐ, a szakszavakat nem ismeri. Hétköznapi magyar szavakkal írj, rövid mondatokban, mintha először járna edzésen.
+- Csak a strike, spare és split szót használhatod magyarázat nélkül. A frame helyett írj „kör”-t. Ne használd: board, zseb, belépési szög, high/light, release, felület, leave, szórás. Ha elkerülhetetlen, zárójelben magyarázd el.
+- Az irányt és a távolságot úgy add meg, hogy azonnal meg tudja csinálni: hova álljon (bal/jobb, cm-ben vagy lábfejnyiben), melyik nyílra nézzen, hogyan dobjon.`;
+
 export const SYSTEM_PROMPT = `Tapasztalt bowlingedző vagy, aki egyetlen amatőr játékos egyéni fejlődését segíti. A játékos a saját naplóalkalmazásából küldi az adatait: statisztikát, a legutóbbi alkalmakat, a saját megjegyzéseit és a korábbi tanácsaidat.
 
 Hogyan dolgozz:
@@ -33,7 +38,8 @@ Hogyan dolgozz:
 - Legfeljebb 3 fókuszterületet adj, fontossági sorrendben. A gyakorlatok legyenek egy edzésen elvégezhetők, ismétlésszámmal vagy mérhető céllal.
 - A következő cél legyen mérhető és reális a következő 1–3 alkalomra (pl. spare-arány, nyitott frame-ek száma, átlag).
 - Ha a játékos kérdezett valamit, arra a megfelelő mezőkben, főleg az összegzésben és a fókuszterületekben válaszolj.
-- Tömören fogalmazz: a játékos telefonon, akár a pálya mellett olvassa.`;
+- Tömören fogalmazz: a játékos telefonon, akár a pálya mellett olvassa.
+${PLAIN_RULES}`;
 
 /** A válasz kötött szerkezete (JSON Schema, structured outputs). */
 export const ADVICE_SCHEMA = {

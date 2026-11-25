@@ -74,8 +74,8 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'figyelem',
         priority: 75,
         title: 'Visszaesés az utóbbi játékokban',
-        text: `Az utolsó ${last20.length} játék átlaga ${r1(-diff)} ponttal gyengébb az előzőnél. Ilyenkor általában az alapok csúsznak el: kiinduló pont, tempó, célpont. Ne a golyót vagy a vonalat cseréld először.`,
-        drill: 'Edzés elején 10 dobás csak a felvezetésre: ugyanarról a boardról indulsz, ugyanarra a nyílra nézel, egyenletes 4–5 lépéssel. Az eredmény most nem számít, csak az ismétlés.',
+        text: `Az utolsó ${last20.length} játék átlaga ${r1(-diff)} ponttal gyengébb az előzőnél. Ilyenkor általában az alapok csúsznak el: hol állsz, milyen gyorsan indulsz, hova nézel. Először ezeket nézd meg, ne a golyót cseréld.`,
+        drill: 'Edzés elején 10 dobás csak a nekifutásra: mindig ugyanonnan indulsz, ugyanarra a nyílra nézel, egyenletes 4–5 lépéssel. Az eredmény most nem számít, csak az ismétlés.',
       });
   }
 
@@ -90,8 +90,8 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'figyelem',
         priority: 80,
         title: 'Versenyen gyengébb vagy, mint edzésen',
-        text: `A versenyátlagod ${r1(-gap)} ponttal marad el az edzésátlagodtól. A tudás megvan, a nyomás alatti ismétlés hiányzik. Erre a legjobb eszköz egy fix rutin minden dobás előtt.`,
-        drill: 'Építs ki egy 10 másodperces rutint: törlöd a kezed, egy mély levegő, kimondod magadban a célpontot, indulás. Edzésen minden dobás előtt csináld végig, így versenyen is automatikus lesz. Az utolsó edzésjátékot játszd „tétre”: előre kitűzött pontszám, amit el kell érned.',
+        text: `A versenyátlagod ${r1(-gap)} ponttal marad el az edzésátlagodtól. A tudás megvan, csak az izgalom zavar. Az segít, ha minden dobás előtt pontosan ugyanazt csinálod.`,
+        drill: 'Legyen egy 10 másodperces szokásod: megtörlöd a kezed, veszel egy mély levegőt, kimondod magadban, hova célzol, és indulsz. Edzésen minden dobás előtt csináld végig, így versenyen is automatikus lesz. Az utolsó edzésjátékot játszd „tétre”: előre kitűzött pontszám, amit el kell érned.',
       });
     else if (gap >= 5)
       tips.push({
@@ -112,8 +112,8 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'figyelem',
         priority: 70,
         title: 'Nagy a különbség a játékaid között',
-        text: `Az utolsó játékaid szórása ${r1(sd)} pont: a jó és a rossz játék nagyon messze van egymástól. A rossz játékokat szinte mindig a kihagyott spare-ek és a nyitott frame-ek okozzák, nem a kevés strike.`,
-        drill: 'Fél edzés csak spare-re: minden dobás után képzelj el egy maradék bábut, és arra dobj. A cél, hogy egy játékban legfeljebb 2 nyitott frame-ed legyen.',
+        text: `A játékaid nagyjából ${r1(sd)} ponttal térnek el az átlagodtól, vagyis a jó és a rossz játék messze van egymástól. Ezt többnyire az okozza, hogy a második dobással nem sikerül leütni a megmaradt bábukat (nincs spare), nem a kevés strike.`,
+        drill: 'Az edzés felében válassz ki dobásonként egyetlen bábut, és csak arra célozz. A cél, hogy egy játékban legfeljebb 2 körben maradjon álló bábu.',
       });
     else if (sd <= 15)
       tips.push({
@@ -121,7 +121,7 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'jo',
         priority: 35,
         title: 'Egyenletes játék',
-        text: `A szórásod mindössze ${r1(sd)} pont, a játékaid kiszámíthatók. A következő szint a strike-arány javítása: egy jól beállított belépési pont (a ${s.strongSide} oldali „zseb”).`,
+        text: `A játékaid csak nagyjából ${r1(sd)} ponttal térnek el az átlagodtól, vagyis kiszámíthatóan játszol. A következő lépés a több strike: célozz az 1-es bábu ${s.strongSide} oldalára, a zsebbe.`,
       });
   }
 
@@ -144,8 +144,8 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'figyelem',
         priority: 65,
         title: 'Lassan indulsz',
-        text: `Az első játékod átlaga (${r1(firstAvg)}) ${r1(restAvg - firstAvg)} ponttal alacsonyabb a többinél. Az első frame-ek „bemelegítéssel” mennek el.`,
-        drill: 'Érkezz 10 perccel korábban: nyújtás, néhány üres lendítés golyóval. A gyakorló dobásoknál már versenytempóban, teljes rutinnal dobj, és figyeld, hol fordul be a golyó.',
+        text: `Az első játékod átlaga (${r1(firstAvg)}) ${r1(restAvg - firstAvg)} ponttal alacsonyabb a többinél. Az első körök még bemelegítéssel mennek el.`,
+        drill: 'Érkezz 10 perccel korábban: nyújtás, néhány üres lendítés golyóval. A próbadobásoknál már úgy dobj, ahogy játékban szoktál, és figyeld, merre kanyarodik a golyó.',
       });
     else if (firstAvg - lateAvg >= 8)
       tips.push({
@@ -153,7 +153,7 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'figyelem',
         priority: 65,
         title: 'A végére elfáradsz',
-        text: `A 3. és későbbi játékaid átlaga (${r1(lateAvg)}) ${r1(firstAvg - lateAvg)} ponttal az első játék alatt van. Ez tipikusan fáradás: rövidül a lendítés, gyorsul a tempó, vagy leesik a kar a kiengedésnél.`,
+        text: `A 3. és későbbi játékaid átlaga (${r1(lateAvg)}) ${r1(firstAvg - lateAvg)} ponttal az első játék alatt van. Ez jellemzően fáradás: kisebbet lendítesz, kapkodsz, vagy leejted a karod, amikor elengeded a golyót.`,
         drill: 'Játékok között igyál vizet és rázd ki a kart. Ha a golyó nehéznek tűnik a végére, próbálj ki egy játékot a könnyebb golyóval. Heti 2× 15 perc alkar- és vállerősítés sokat segít.',
       });
   }
@@ -166,8 +166,8 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
       level: 'figyelem',
       priority: 72,
       title: 'Túl sok a 100 alatti játék',
-      text: `Az utolsó ${last20.length} játékból ${under} ment 100 alá. Egy-egy ilyen játék az egész átlagot lehúzza. A gyors javulás kulcsa a biztos spare, főleg az egyes bábuknál.`,
-      drill: `Spare-rendszer: a strike-célpontot (nyilat) megtartod, csak a lábadat teszed máshova. A ${s.weakSide} oldali bábukhoz ${s.strongSide}ra lépsz (3, 6 vagy 9 boardot, ahogy távolodik a bábu), a ${s.cornerPin} bábuhoz a pálya másik széléről, keresztben, egyenesen dobj, akár spare golyóval.`,
+      text: `Az utolsó ${last20.length} játékból ${under} ment 100 alá. Egy-egy ilyen játék az egész átlagot lehúzza. A leggyorsabban azzal javulsz, ha a második dobással biztosan leütöd a megmaradt bábut (spare).`,
+      drill: `A második dobásnál ugyanarra a nyílra nézz, mint elsőnél, csak állj máshova. Ha ${s.weakSide} oldalon maradt bábu, állj ${s.strongSide}ra (minél szélebb a bábu, annál többet: 3, 6 vagy 9 deszkacsík, kb. 8, 16 vagy 24 cm). A ${s.cornerPin} bábuhoz állj a pálya másik szélére, és dobj keresztben, egyenesen.`,
     });
 
   // 6) Golyók összevetése.
@@ -187,7 +187,7 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'info',
         priority: 45,
         title: `A(z) ${balls[0].k} megy jobban`,
-        text: `A(z) ${balls[0].k} golyóval ${r1(balls[0].avg)} az átlagod, a(z) ${balls[balls.length - 1].k} golyóval ${r1(balls[balls.length - 1].avg)}. Ez ${r1(diff)} pont különbség. Strike-dobásra a jobbat használd. Ha a gyengébb a spare golyód, azt ne a teljes átlag alapján ítéld meg.`,
+        text: `A(z) ${balls[0].k} golyóval ${r1(balls[0].avg)} az átlagod, a(z) ${balls[balls.length - 1].k} golyóval ${r1(balls[balls.length - 1].avg)}. Ez ${r1(diff)} pont különbség. Az első dobáshoz a jobbat használd. Ha a gyengébbet főleg a megmaradt bábukra használod, az átlaga nem mond sokat.`,
       });
   }
 
@@ -202,7 +202,7 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'info',
         priority: 50,
         title: 'A fáradtság sokat számít nálad',
-        text: `Frissen átlagosan ${r1(diff)} ponttal jobban dobsz, mint fáradtan. Fontos versenyek előtti napon pihenj, és fáradtan inkább technikai edzést tarts, ne pontszámra játssz.`,
+        text: `Frissen átlagosan ${r1(diff)} ponttal jobban dobsz, mint fáradtan. Fontos versenyek előtti napon pihenj, és fáradtan inkább csak gyakorolj, ne a pontszámot nézd.`,
       });
   }
 
@@ -221,9 +221,9 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
     const diff = oils[oils.length - 1].avg - worst.avg;
     const label: Record<string, string> = { rovid: 'rövid', kozepes: 'közepes', hosszu: 'hosszú' };
     const advice: Record<string, string> = {
-      rovid: `Rövid olajon a golyó korán fordul: menj beljebb a lábaddal és a célponttal is, és használj kevésbé agresszív golyót. Ha túl sok a „high hit”, lépj 2 boardot ${s.weakSide}ra, és a célpontot is vidd ugyanannyival.`,
-      kozepes: 'Közepes olajon kezdj a szokásos vonaladon, és az első 2–3 frame alapján igazíts. Mindig a lábaddal és a célponttal együtt mozdulj: 2 board a lábbal, 1 board a célponttal.',
-      hosszu: `Hosszú olajon a golyó későn fordul: játssz egyenesebb, közvetlenebb vonalon a zseb felé, és ne próbáld erőből forgatni. Erősebb felületű golyó segít.`,
+      rovid: `Rövid olajon a golyó hamar elkezd kanyarodni. Próbálj a pálya ${s.strongSide} széléhez közelebb célozni, és simább golyóval, egyenesebben dobni. Ha így is túl sokat kanyarodik, állj 2 deszkacsíkkal (kb. 5 cm) ${s.weakSide}ra.`,
+      kozepes: 'Közepes olajon kezdj úgy, ahogy szoktál, és az első 2–3 kör után igazíts. Ha a golyó rendszeresen egy irányba téveszt, állj kb. 5 cm-rel abba az irányba, és ugyanoda célozz.',
+      hosszu: `Hosszú olajon a golyó sokáig csúszik, és alig kanyarodik. Célozz kicsit közelebb a pálya közepéhez, dobj nyugodtan és egyenesebben a zseb felé, és ne próbáld erőből forgatni.`,
     };
     if (diff >= 10)
       tips.push({
@@ -245,7 +245,7 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'info',
         priority: 30,
         title: 'A kitűzött fókusz ritkán sikerül',
-        text: `Az utóbbi fókuszaidból ${ok}/${focused.length} sikerült. Lehet, hogy túl tág a cél. Egyszerre csak egy, mérhető dolgot tűzz ki (pl. „minden egyes bábus spare-t leütök”), ne általánosat („jobban dobok”).`,
+        text: `Az utóbbi fókuszaidból ${ok}/${focused.length} sikerült. Lehet, hogy túl tág a cél. Egyszerre csak egy, mérhető dolgot tűzz ki (pl. „ha egy bábu marad, azt leütöm”), ne általánosat („jobban dobok”).`,
       });
   }
 
@@ -258,7 +258,7 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
       level: 'info',
       priority: 55,
       title: `${gapDays} napja nem játszottál`,
-      text: 'Hosszabb kihagyás után az első alkalom legyen könnyű technikai edzés. Ne az eredményre figyelj, hanem hogy visszajöjjön az ütem és a kiengedés.',
+      text: 'Hosszabb kihagyás után az első alkalom legyen könnyű gyakorlás. Ne az eredményre figyelj, hanem hogy visszajöjjön az ütemed.',
     });
 
   // 12) Frame-adatokból (csak ha elég részletes játék van).
@@ -277,9 +277,9 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         id: 'egybabu',
         level: 'figyelem',
         priority: 82,
-        title: 'Elmaradnak az egy bábus spare-ek',
-        text: `Az egy bábus állásokból csak ${p0(singleP)}%-ot ütsz le (${fs.singlePinSpares}/${fs.singlePinChances}). Ezek a legkönnyebb pontok: minden elhibázott egy bábus spare kb. 10 pontba kerül.`,
-        drill: `Egy bábus spare-edzés: 10 dobás a ${corner}-es bábura, 10 a ${corner === 10 ? '7' : '10'}-esre, egyenes dobással (spare golyóval, ha van). A cél legalább 8/10 mindkettőn. Ugyanazt a célpontot használd minden alkalommal.`,
+        title: 'Sokszor marad egyetlen bábu',
+        text: `Amikor egyetlen bábu maradt, az esetek ${p0(singleP)}%-ában ütötted le (${fs.singlePinSpares}/${fs.singlePinChances}). Ezek a legkönnyebb pontok: minden kihagyás kb. 10 pontba kerül.`,
+        drill: `10 dobás csak a ${corner}-es bábura, 10 csak a ${corner === 10 ? '7' : '10'}-esre, egyenesen. Kezdő cél: 10-ből legalább 5, később 8. Mindig ugyanonnan indulj, és ugyanoda nézz.`,
       });
     if (cornerP !== null && fs.cornerLeaves >= 5 && cornerP < 50)
       tips.push({
@@ -287,17 +287,17 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'figyelem',
         priority: 68,
         title: `A ${corner}-es bábu gyakran megmarad`,
-        text: `${fs.cornerLeaves}× maradt egyedül a ${corner}-es bábu, ebből ${fs.cornerSpares}-t ütöttél le (${p0(cornerP)}%). Erre ne ívelt dobással menj: a pálya ${corner === 10 ? 'bal' : 'jobb'} széléről, keresztben, egyenesen dobj.`,
-        drill: `Állj a pálya ${corner === 10 ? 'bal' : 'jobb'} oldalára (kb. a 35. boardra), nézz a középső nyíl mellé, és egyenes, kissé lassabb dobással célozz átlósan a ${corner}-es bábura. 15 dobás egymás után.`,
+        text: `${fs.cornerLeaves}× maradt egyedül a ${corner}-es bábu, ebből ${fs.cornerSpares}-t ütöttél le (${p0(cornerP)}%). Erre ne kanyarodó golyót dobj: állj a pálya ${corner === 10 ? 'bal' : 'jobb'} szélére, és dobj keresztben, egyenesen.`,
+        drill: `Állj a pálya ${corner === 10 ? 'bal' : 'jobb'} szélére, nézz a középső nyíl környékére, és egyenes, nyugodt dobással célozz átlósan a ${corner}-es bábura. 15 dobás egymás után.`,
       });
     if (spareP !== null && fs.spareChances >= 20 && spareP < 50 && !tips.some((t) => t.id === 'egybabu'))
       tips.push({
         id: 'spare-arany',
         level: 'figyelem',
         priority: 76,
-        title: 'Alacsony a spare-arányod',
-        text: `A spare-lehetőségek ${p0(spareP)}%-át használod ki (${fs.spares}/${fs.spareChances}). 150-es átlaghoz kb. 50–60% kell, és ez gyorsabban javítható, mint a strike.`,
-        drill: 'Minden edzés második felét spare-re fordítsd: dobás előtt mondd ki magadnak, melyik bábut célzod, és hova állsz. Számold, hány sikerül.',
+        title: 'Ritkán sikerül a második dobás',
+        text: `A megmaradt bábukat az esetek ${p0(spareP)}%-ában ütötted le (spare: ${fs.spares}/${fs.spareChances}). Ezen könnyebb javítani, mint a strike-ok számán.`,
+        drill: 'Az edzés második felében a megmaradt bábukra figyelj: dobás előtt mondd ki magadnak, melyik bábut célzod, és hova állsz. Számold, hány sikerül.',
       });
     if (splitP !== null && fs.leavesKnown >= 20 && splitP >= 12)
       tips.push({
@@ -305,16 +305,16 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'info',
         priority: 54,
         title: 'Sok a split',
-        text: `Az álló bábus helyzeteid ${p0(splitP)}%-a split. Ez általában azt jelenti, hogy a golyó túl egyenesen vagy túl telibe („high”) érkezik a fejbábura. A cél a zseb: jobbkezesnél az 1–3, balkezesnél az 1–2 bábu közé.`,
-        drill: 'Figyeld, hol találja el a golyó a fejbábut. Ha telibe, lépj 1–2 boardot a lábaddal az ív irányába, a célpont maradjon. Egyenletes sebességgel dobj, ne erőből.',
+        text: `Amikor marad bábu, az esetek ${p0(splitP)}%-ában split. Ez gyakran azért van, mert a golyó az elülső (1-es) bábut pont középen találja el. Célozz kicsit mellé, a zsebbe.`,
+        drill: 'Figyeld, hol találja el a golyó az 1-es bábut. Ha pont középen, állj kb. 5 cm-rel ${s.weakSide}ra, és ugyanoda célozz. Nyugodt sebességgel dobj, ne erőből.',
       });
     if (strikeP !== null && spareP !== null && fs.strikeChances >= 30 && strikeP < 20 && spareP >= 60)
       tips.push({
         id: 'strike-arany',
         level: 'info',
         priority: 50,
-        title: 'Jók a spare-jeid, jöhet a strike',
-        text: `A spare-arányod jó (${p0(spareP)}%), de a strike-arányod csak ${p0(strikeP)}%. A következő lépés a belépési szög: egy kis ív a zsebbe sokkal több strike-ot hoz, mint egy erős, egyenes dobás.`,
+        title: 'Jó a második dobásod, jöhet a strike',
+        text: `A megmaradt bábukat jól leütöd (${p0(spareP)}%), de strike-od csak az esetek ${p0(strikeP)}%-ában van. Az segít, ha az első dobással az 1-es bábu mellé, a zsebbe célzol, nem középre.`,
       });
   }
 
@@ -337,7 +337,7 @@ export function coachTips({ sessions, settings, today }: CoachInput): CoachTip[]
         level: 'info',
         priority: 52,
         title: 'Közel vagy a célhoz',
-        text: `Már csak ${r1(gap)} pont kell a ${goal}-es átlaghoz. Egy játékra vetítve ez kb. ${Math.max(1, Math.ceil(gap / 10))} plusz spare (egy spare kb. 10 ponttal többet ér egy nyitott frame-nél).`,
+        text: `Már csak ${r1(gap)} pont kell a ${goal}-es átlaghoz. Egy játékra vetítve ez kb. ${Math.max(1, Math.ceil(gap / 10))} sikeres második dobás (spare) többlet, mert egy spare kb. 10 ponttal többet ér, mint ha bábu marad.`,
       });
   }
 
@@ -404,7 +404,7 @@ export function sessionFeedback(session: Session, allSessions: Session[]): Sessi
   for (const g of session.games) if (g.frames) addGameStats(fs, g.frames);
   if (fs.games > 0)
     lines.push(
-      `Frame-ek (${fs.games} játék): ${fs.strikes} strike, spare ${fs.spares}/${fs.spareChances}, ${fs.opens} nyitott frame.`,
+      `Dobások (${fs.games} játék): ${fs.strikes} strike, spare ${fs.spares}/${fs.spareChances}, ${fs.opens} körben maradt bábu.`,
     );
 
   const c = session.coach;

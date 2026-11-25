@@ -6,6 +6,7 @@
  */
 import type { AppData, CoachReport } from '../domain/types';
 import { uid } from '../util/format';
+import { buildLiveMessage, LIVE_SCHEMA, LIVE_SYSTEM, parseLive, type LiveAdvice, type LiveContext, type LiveGame } from './live';
 import { ADVICE_SCHEMA, buildCoachMessage, COACH_MODEL, estimateCostUsd, parseAdvice, SYSTEM_PROMPT } from './prompt';
 
 const KEY_STORAGE = 'bowling-naplo-anthropic-key';
@@ -55,6 +56,43 @@ export async function verifyApiKey(apiKey: string): Promise<KeyCheck> {
 }
 
 export class CoachError extends Error {}
+
+export interface LiveRequest {
+  apiKey: string;
+  data: AppData;
+  ctx: LiveContext;
+  game?: LiveGame;
+  signal?: AbortSignal;
+}
+
+/** Gyors tanács játék közben: rövid válasz, alacsony gondolkodási szint. */
+export async function requestLiveAdvice(req: LiveRequest): Promise<LiveAdvice> {
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: req.apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: 45_000 });
+  let message;
+  try {
+    message = await client.beta.messages.create(
+      {
+        model: COACH_MODEL,
+        max_tokens: 4000,
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        output_config: { effort: 'low', format: { type: 'json_schema', schema: LIVE_SCHEMA } },
+        system: LIVE_SYSTEM,
+        messages: [{ role: 'user', content: buildLiveMessage(req.data, req.ctx, req.game) }],
+      },
+      { signal: req.signal },
+    );
+  } catch (err) {
+    throw toCoachError(err, Anthropic);
+  }
+  if (message.stop_reason === 'refusal' || message.stop_reason === 'max_tokens') throw new CoachError('Most nem sikerült tanácsot adni. Próbáld újra.');
+  try {
+    return parseLive(message.content.map((b) => (b.type === 'text' ? b.text : '')).join(''));
+  } catch (e) {
+    throw new CoachError((e as Error).message);
+  }
+}
 
 export interface CoachRequest {
   apiKey: string;
