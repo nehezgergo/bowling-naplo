@@ -24,7 +24,7 @@ import { deleteSession, getData, lastSession, upsertSession } from '../state';
 import { esc, fmtAvg, fmtDate, todayIso, uid } from '../util/format';
 import { oneAction } from '../coach/oneAction';
 import type { LiveContext } from '../coach/live';
-import { openFrameEditor } from './frameEditor';
+import { openFrameEditor, type EFrame } from './frameEditor';
 import { createLiveAdvice } from './liveAdvice';
 import { navigate, setJustSaved, showSaved, toast } from './shell';
 
@@ -44,6 +44,8 @@ interface Draft {
   scores: string[];
   /** Játékonkénti frame-adat (ha részletesen vitted be). */
   frames: (Frame[] | undefined)[];
+  /** Félbehagyott, dobásonként rögzített játékok. */
+  partials: (EFrame[] | undefined)[];
   /** Játékonkénti golyó; '' = az alkalom golyója. */
   gameBalls: string[];
   coach: SessionCoach;
@@ -55,6 +57,7 @@ interface Draft {
 function normalizeDraft(d: Draft): Draft {
   const n = d.scores.length;
   d.frames = Array.from({ length: n }, (_, i) => d.frames?.[i] ?? undefined);
+  d.partials = Array.from({ length: n }, (_, i) => d.partials?.[i] ?? undefined);
   d.warmup = d.warmup ?? {};
   d.coach = d.coach ?? {};
   d.competition = d.competition ?? {};
@@ -120,6 +123,7 @@ function newDraft(): Draft {
     note: '',
     scores: [''],
     frames: [undefined],
+    partials: [undefined],
     gameBalls: [''],
     coach: {},
     competition: {},
@@ -141,6 +145,7 @@ function draftFromSession(s: Session): Draft {
     note: s.note ?? '',
     scores: games.map((g) => String(g.score)),
     frames: games.map((g) => g.frames),
+    partials: games.map(() => undefined),
     gameBalls: games.map((g) => g.ball ?? ''),
     coach: { ...(s.coach ?? {}) },
     competition: { ...(s.competition ?? {}) },
@@ -260,6 +265,8 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
   };
 
   // ───────────── 2. Játékok ─────────────
+  /** Hányadik körnél tart a félbehagyott játék (0: nincs ilyen). */
+  const partialRounds = (i: number) => draft.partials[i]?.filter((f) => f.rolls.length).length ?? 0;
   const gameCard = (v: string, i: number) => {
     const hasFrames = !!draft.frames[i];
     const gb = draft.gameBalls[i];
@@ -279,8 +286,9 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
             enterkeyhint="next" autocomplete="off" placeholder="pl. 156" value="${esc(v)}" ${hasFrames ? 'readonly' : ''}>
         </div>
         <span class="gc-or">vagy</span>
-        <button type="button" class="btn gc-frames${hasFrames ? ' on' : ''}" data-frames="${i}">▦<small>${hasFrames ? 'Dobások' : 'Dobásonként'}</small></button>
+        <button type="button" class="btn gc-frames${hasFrames ? ' on' : ''}" data-frames="${i}">▦<small>${hasFrames ? 'Dobások' : partialRounds(i) ? 'Folytatás' : 'Dobásonként'}</small></button>
       </div>
+      ${partialRounds(i) && !v ? `<div class="muted small">Félbehagyva, ${partialRounds(i)}. kör. A „Folytatás” gombbal onnan mehetsz tovább.</div>` : ''}
       ${invalid ? '<div class="gc-err">0 és 300 közötti egész szám legyen.</div>' : ''}
     </div>`;
   };
@@ -395,6 +403,8 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
         root.querySelector<HTMLInputElement>('.game-input')?.focus();
         return;
       }
+      const open = draft.scores.findIndex((s, i) => !s.trim() && partialRounds(i) > 0);
+      if (open >= 0 && !confirm(`A(z) ${open + 1}. játék nincs befejezve, ezért nem kerül be az alkalomba. Így is lezárod?`)) return;
     }
     draft.step = to;
     persist();
@@ -418,6 +428,7 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
   const addGame = () => {
     draft.scores.push('');
     draft.frames.push(undefined);
+    draft.partials.push(undefined);
     draft.gameBalls.push('');
     rerenderGames(draft.scores.length - 1);
   };
@@ -527,9 +538,10 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
       const rm = t.closest<HTMLButtonElement>('[data-remove]');
       if (rm) {
         const i = Number(rm.dataset.remove);
-        if ((draft.frames[i] || draft.scores[i]) && !confirm(`Törlöd a(z) ${i + 1}. játékot?`)) return;
+        if ((draft.frames[i] || draft.scores[i] || draft.partials[i]) && !confirm(`Törlöd a(z) ${i + 1}. játékot?`)) return;
         draft.scores.splice(i, 1);
         draft.frames.splice(i, 1);
+        draft.partials.splice(i, 1);
         draft.gameBalls.splice(i, 1);
         return rerenderGames();
       }
@@ -548,7 +560,13 @@ export function renderNewSession(root: HTMLElement, params: URLSearchParams): vo
           title: `${i + 1}. játék`,
           frames: draft.frames[i],
           live: { ctx: liveContext(i), gameNo: i + 1, ball: draft.gameBalls[i] || undefined },
+          partial: draft.partials[i],
+          onProgress: (p) => {
+            draft.partials[i] = p.some((f) => f.rolls.length) ? p : undefined;
+            rerenderGames();
+          },
           onDone: (frames) => {
+            draft.partials[i] = undefined;
             draft.frames[i] = frames ?? undefined;
             if (frames) draft.scores[i] = String(scoreGame(frames).total);
             rerenderGames();

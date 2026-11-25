@@ -8,7 +8,8 @@ import type { LiveContext } from '../coach/live';
 import { esc } from '../util/format';
 import { createLiveAdvice } from './liveAdvice';
 
-interface EFrame {
+/** Egy kör a szerkesztőben (félbehagyott játéknál ez mentődik). */
+export interface EFrame {
   rolls: number[];
   /** Álló bábuk minden dobás után (ha ebben a szerkesztésben vitted be). */
   stand: (number[] | undefined)[];
@@ -23,6 +24,10 @@ export interface FrameEditorOptions {
   title: string;
   frames?: Frame[];
   onDone: (frames: Frame[] | null) => void;
+  /** Félbehagyott játék, ahonnan folytatni kell. */
+  partial?: EFrame[];
+  /** Befejezetlen játéknál minden dobás után: így bezáráskor vagy újraindításkor sem vész el. */
+  onProgress?: (frames: EFrame[]) => void;
   /** Ha meg van adva, játék közben AI-tanács kérhető. */
   live?: { ctx: LiveContext; gameNo: number; ball?: string };
 }
@@ -60,7 +65,14 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
   // Dupla koppintásra se nyíljon meg kétszer.
   if (document.querySelector('.fe-overlay:not(.closing)')) return;
   const hadFrames = !!opts.frames?.length;
+  // Kész játék javításánál a „Mégse” elveti a változást; új játéknál a bezárás megőrzi.
+  const keeps = !hadFrames && !!opts.onProgress;
+  const progress = () => {
+    if (keeps) opts.onProgress!(frames.map((f) => ({ ...f, rolls: [...f.rolls], stand: [...f.stand] })));
+  };
   const frames: EFrame[] = Array.from({ length: 10 }, (_, i) => {
+    const part = keeps ? opts.partial?.[i] : undefined;
+    if (part) return { ...part, rolls: [...part.rolls], stand: [...part.stand] };
     const f = opts.frames?.[i];
     return f ? { rolls: [...f.rolls], stand: [], pinsLeft: f.pinsLeft, pinsAfter: f.pinsAfter, firstBall: f.firstBall } : { rolls: [], stand: [] };
   });
@@ -133,7 +145,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
 
     overlay.innerHTML = `
       <div class="fe-top">
-        <button type="button" class="btn btn-ghost" data-act="cancel">Mégse</button>
+        <button type="button" class="btn btn-ghost" data-act="cancel">${keeps ? 'Bezár' : 'Mégse'}</button>
         <div class="fe-title">${esc(opts.title)}</div>
         <button type="button" class="btn btn-primary" data-act="done" ${complete ? '' : 'disabled'}>Kész</button>
       </div>
@@ -162,7 +174,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
       <div class="fe-bottom">
         <button type="button" class="btn btn-ghost" data-act="undo" ${frames.some((x) => x.rolls.length) ? '' : 'disabled'}>↶ Vissza</button>
         <span class="fe-total">Eddig: <b>${total}</b></span>
-        ${hadFrames ? '<button type="button" class="btn btn-ghost danger-text" data-act="clear">Törlés</button>' : '<span></span>'}
+        ${hadFrames || (keeps && frames.some((x) => x.rolls.length)) ? '<button type="button" class="btn btn-ghost danger-text" data-act="clear">Törlés</button>' : '<span></span>'}
       </div>`;
     if (scroll) overlay.querySelector('.fe-body')!.scrollTop = scroll;
   };
@@ -203,6 +215,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
     }
     sel = new Set();
     if (isFrameComplete(f, cur)) cur = firstIncomplete();
+    progress();
     render();
   };
 
@@ -228,6 +241,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
     if (f.rolls.length === 0) delete f.firstBall;
     cur = i;
     sel = new Set();
+    progress();
     render();
   };
 
@@ -264,6 +278,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
       frames[i] = { rolls: [], stand: [] };
       cur = i;
       sel = new Set();
+      progress();
       render();
       return;
     }
@@ -278,7 +293,7 @@ export function openFrameEditor(opts: FrameEditorOptions): void {
     if (act === 'undo') undo();
     else if (act === 'cancel') close(undefined);
     else if (act === 'done') close(frames.map(toFrame));
-    else if (act === 'clear' && confirm('Törlöd ennek a játéknak a dobásait? A pontszám megmarad.')) close(null);
+    else if (act === 'clear' && confirm(hadFrames ? 'Törlöd ennek a játéknak a dobásait? A pontszám megmarad.' : 'Törlöd ennek a játéknak az eddigi dobásait?')) close(null);
   });
 
   render();
